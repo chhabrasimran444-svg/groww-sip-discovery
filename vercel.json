@@ -1,14 +1,5 @@
 {
-  "framework": null,
-  "buildCommand": "",
-  "outputDirectory": "public",
   "functions": {
-    "api/*.js": { "maxDuration": 60, "includeFiles": "data/**" }
-  },
-  "headers": [
-    { "source": "/(.*)", "headers": [
-      { "key": "X-Content-Type-Options", "value": "nosniff" },
-      { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
-    ] }
-  ]
+    "api/ai.js": { "maxDuration": 60, "includeFiles": "*.{json,txt}" }
+  }
 }

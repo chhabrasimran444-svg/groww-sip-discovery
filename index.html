@@ -621,7 +621,7 @@ QUESTION: ${question}`;
     askCtl = new AbortController(); $('#ask-send').disabled = true; $('#ask-stop').hidden = false; $('#ask-status').textContent = '';
     try {
       const { text, truncated } = S.mode === 'api'
-        ? await apiCall('/api/ask', { question, refs: posts.map((r) => r.ref), history: turns.slice(-2).map((t) => ({ q: String(t.q).slice(0, 300), a: String(t.a).slice(0, 700) })) }, askCtl.signal)
+        ? await apiCall('/api/ai?op=ask', { question, refs: posts.map((r) => r.ref), history: turns.slice(-2).map((t) => ({ q: String(t.q).slice(0, 300), a: String(t.a).slice(0, 700) })) }, askCtl.signal)
         : await sample(prompt, { signal: askCtl.signal, cache: false, onText: ({ text }) => renderCited(b.body, b.qb, text, allowed) });
       renderCited(b.body, b.qb, text, allowed);
       const bad = b.body.querySelectorAll('.cite.bad').length;
@@ -731,7 +731,7 @@ ${posts.map((p, i) => `POST ${i + 1}:\n"""\n${p.slice(0, 3000)}\n"""`).join('\n\
     $('#an-status').className = 'status'; $('#an-status').textContent = `Labelling ${posts.length} post${posts.length > 1 ? 's' : ''}… this usually takes 10–40 seconds.`;
     try {
       let out = S.mode === 'api'
-        ? (await apiCall('/api/analyze', { posts, source: src }, anCtl.signal)).labels
+        ? (await apiCall('/api/ai?op=analyze', { posts, source: src }, anCtl.signal)).labels
         : await sample.json(prompt, { signal: anCtl.signal });
       if (!Array.isArray(out)) out = [out];
       const cards = posts.map((p, i) => resultCard(validate(Object.assign({}, out[i] || { relevant: false, why: 'No label came back for this post.' })), p));
@@ -836,7 +836,7 @@ ${posts.map((p, i) => `POST ${i + 1}:\n"""\n${p.slice(0, 3000)}\n"""`).join('\n\
   } else {
     S.sample = null; downloads = null;
     $('#an-go').disabled = true;
-    fetch('/api/health').then((r) => (r.ok ? r.json() : null)).then((h) => {
+    fetch('/api/ai?op=health').then((r) => (r.ok ? r.json() : null)).then((h) => {
       if (h && h.ai) {
         S.mode = 'api'; $('#an-go').disabled = false;
         $('#ai-note').textContent = 'On this website, the Ask Assistant and Live Analyzer run on Google Gemini through the site\'s own server; the 899 stored labels were made by Claude.';
