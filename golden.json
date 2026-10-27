@@ -5,7 +5,10 @@
   "n": 25,
   "agreed": 20,
   "rate_pct": 80,
-  "kappa": 0.324
+  "kappa": 0.324,
+  "v5_agreed": 20,
+  "v5_rate_pct": 80,
+  "v5_kappa": 0.324
  },
  {
   "field": "primary_theme",
@@ -13,7 +16,10 @@
   "n": 18,
   "agreed": 5,
   "rate_pct": 28,
-  "kappa": 0.201
+  "kappa": 0.201,
+  "v5_agreed": 6,
+  "v5_rate_pct": 33,
+  "v5_kappa": 0.265
  },
  {
   "field": "primary_theme_lenient",
@@ -21,7 +27,10 @@
   "n": 18,
   "agreed": 8,
   "rate_pct": 44,
-  "kappa": null
+  "kappa": null,
+  "v5_agreed": 9,
+  "v5_rate_pct": 50,
+  "v5_kappa": null
  },
  {
   "field": "theme_group",
@@ -29,7 +38,10 @@
   "n": 18,
   "agreed": 12,
   "rate_pct": 67,
-  "kappa": null
+  "kappa": null,
+  "v5_agreed": 14,
+  "v5_rate_pct": 78,
+  "v5_kappa": null
  },
  {
   "field": "drop_signal",
@@ -37,7 +49,10 @@
   "n": 18,
   "agreed": 14,
   "rate_pct": 78,
-  "kappa": null
+  "kappa": null,
+  "v5_agreed": 14,
+  "v5_rate_pct": 78,
+  "v5_kappa": null
  },
  {
   "field": "sip_action",
@@ -45,7 +60,10 @@
   "n": 18,
   "agreed": 6,
   "rate_pct": 33,
-  "kappa": 0.234
+  "kappa": 0.234,
+  "v5_agreed": 8,
+  "v5_rate_pct": 44,
+  "v5_kappa": 0.302
  },
  {
   "field": "drop_mechanism",
@@ -53,7 +71,10 @@
   "n": 18,
   "agreed": 13,
   "rate_pct": 72,
-  "kappa": 0.4
+  "kappa": 0.4,
+  "v5_agreed": 13,
+  "v5_rate_pct": 72,
+  "v5_kappa": 0.4
  },
  {
   "field": "journey_stage",
@@ -61,7 +82,10 @@
   "n": 18,
   "agreed": 13,
   "rate_pct": 72,
-  "kappa": 0.286
+  "kappa": 0.286,
+  "v5_agreed": 13,
+  "v5_rate_pct": 72,
+  "v5_kappa": 0.286
  },
  {
   "field": "evidence_strength",
@@ -69,7 +93,10 @@
   "n": 17,
   "agreed": 16,
   "rate_pct": 94,
-  "kappa": 0.638
+  "kappa": 0.638,
+  "v5_agreed": 16,
+  "v5_rate_pct": 94,
+  "v5_kappa": 0.638
  },
  {
   "field": "first_time_investor",
@@ -77,6 +104,9 @@
   "n": 18,
   "agreed": 6,
   "rate_pct": 33,
-  "kappa": 0.023
+  "kappa": 0.023,
+  "v5_agreed": 6,
+  "v5_rate_pct": 33,
+  "v5_kappa": 0.023
  }
 ]

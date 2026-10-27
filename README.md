@@ -9,12 +9,10 @@ Independent fellowship case study on public posts. Not affiliated with Groww. No
 
 | Path | What it is |
 |---|---|
-| `public/index.html` | The whole site: Ask Assistant, Dashboard, Live Analyzer, Method & evidence |
-| `public/*.json`, `public/*.csv` | The labelled posts, codebook, golden-set results (one snapshot, collected 26 Oct 2026) |
-| `api/ask.js` | Answers typed questions from the stored posts with Google Gemini, citing post refs |
-| `api/analyze.js` | Labels pasted posts against the same codebook with Google Gemini |
-| `api/health.js` | Tells the page whether the AI key is set |
-| `data/` | Server copies of the posts, stats and codebook used to build prompts |
+| `index.html` | The whole site: Ask Assistant, Dashboard, Live Analyzer, Method & evidence |
+| `*.json`, `*.csv` | The labelled posts (codebook v5), codebook, golden-set results, v5 change log (one snapshot, collected 26 Oct 2026) |
+| `api/ai.js` | The one server function: `?op=ask` answers typed questions with Google Gemini citing post refs, `?op=analyze` labels pasted posts with the same codebook, `?op=health` says whether the AI key is set |
+| `posts.json`, `stats_brief.txt`, `codebook.json` | What the server uses to build prompts, so the endpoint can only answer about this dataset |
 
 Everything except typed questions and Analyze works with no key. The AI key is never in the code.
 
