@@ -1,0 +1,82 @@
+[
+ {
+  "field": "relevant",
+  "label": "Relevant or not",
+  "n": 25,
+  "agreed": 20,
+  "rate_pct": 80,
+  "kappa": 0.324
+ },
+ {
+  "field": "primary_theme",
+  "label": "Main theme (exact)",
+  "n": 18,
+  "agreed": 5,
+  "rate_pct": 28,
+  "kappa": 0.201
+ },
+ {
+  "field": "primary_theme_lenient",
+  "label": "Main theme (matches engine's main or secondary)",
+  "n": 18,
+  "agreed": 8,
+  "rate_pct": 44,
+  "kappa": null
+ },
+ {
+  "field": "theme_group",
+  "label": "Main theme group (machinery / understanding / money / moving / positive)",
+  "n": 18,
+  "agreed": 12,
+  "rate_pct": 67,
+  "kappa": null
+ },
+ {
+  "field": "drop_signal",
+  "label": "Drop signal (stopping or close to it)",
+  "n": 18,
+  "agreed": 14,
+  "rate_pct": 78,
+  "kappa": null
+ },
+ {
+  "field": "sip_action",
+  "label": "What they did with the SIP",
+  "n": 18,
+  "agreed": 6,
+  "rate_pct": 33,
+  "kappa": 0.234
+ },
+ {
+  "field": "drop_mechanism",
+  "label": "How it dropped",
+  "n": 18,
+  "agreed": 13,
+  "rate_pct": 72,
+  "kappa": 0.4
+ },
+ {
+  "field": "journey_stage",
+  "label": "Time since starting",
+  "n": 18,
+  "agreed": 13,
+  "rate_pct": 72,
+  "kappa": 0.286
+ },
+ {
+  "field": "evidence_strength",
+  "label": "Evidence strength",
+  "n": 17,
+  "agreed": 16,
+  "rate_pct": 94,
+  "kappa": 0.638
+ },
+ {
+  "field": "first_time_investor",
+  "label": "First-time investor",
+  "n": 18,
+  "agreed": 6,
+  "rate_pct": 33,
+  "kappa": 0.023
+ }
+]

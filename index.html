@@ -1,0 +1,850 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="description" content="Why do first-time investors stop their SIPs? An AI discovery engine over 899 labelled public posts."><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style><title>Groww SIP Discovery Engine</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a ledger-like workbench. One narrow reading column for chat and analyzer, a wider grid for the dashboard; a 12-month instalment strip carries the thesis in the hero. */
+:root {
+  --bg: #f4f6f5;
+  --surface: #ffffff;
+  --sunk: #e9eeec;
+  --line: #d3dcd8;
+  --fg: #15211d;
+  --muted: #5b6b65;
+  --accent: #1f5a7a;
+  --accent-soft: #dde9f0;
+  --leak: #b4471c;
+  --leak-soft: #f6e3da;
+  --keep: #2c7a4f;
+  --keep-soft: #dcefe3;
+  --warn: #9a6a0b;
+  --font-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1614; --surface: #17211e; --sunk: #1d2925; --line: #2c3b36; --fg: #e5ece9; --muted: #98aaa3;
+    --accent: #7fb8d6; --accent-soft: #1d3442; --leak: #ef8a5f; --leak-soft: #3a2219; --keep: #6fc895; --keep-soft: #183326; --warn: #e2b34f;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1614; --surface: #17211e; --sunk: #1d2925; --line: #2c3b36; --fg: #e5ece9; --muted: #98aaa3;
+  --accent: #7fb8d6; --accent-soft: #1d3442; --leak: #ef8a5f; --leak-soft: #3a2219; --keep: #6fc895; --keep-soft: #183326; --warn: #e2b34f;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0; }
+a { color: var(--accent); }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* header */
+.top { border-bottom: 1px solid var(--line); background: var(--surface); }
+.top .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 12px; flex-wrap: wrap; }
+.brand { font-family: var(--font-display); font-weight: 700; font-size: 17px; text-decoration: none; color: var(--fg); letter-spacing: -0.01em; }
+.brand span { color: var(--muted); font-weight: 500; }
+.tag { font-size: 12px; color: var(--muted); }
+
+/* hero */
+.hero { padding-block: 36px 20px; display: grid; gap: 20px; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+.hero h1 { font-family: var(--font-display); font-size: clamp(30px, 5vw, 50px); line-height: 1.05; letter-spacing: -0.02em; margin: 6px 0 10px; text-wrap: balance; max-width: 18ch; }
+.hero p.lede { margin: 0; max-width: 62ch; color: var(--muted); font-size: 16px; }
+.strip { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; }
+.strip-head { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+.months { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 4px; }
+.mo { height: 30px; border-radius: 5px; background: var(--keep-soft); border: 1px solid transparent; position: relative; }
+.mo.miss { background: var(--leak-soft); border-color: var(--leak); }
+.mo.goal { background: var(--keep); }
+.mo-l { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 4px; margin-top: 4px; font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); text-align: center; }
+.leaks { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 8px; margin-top: 12px; }
+.leak { font-size: 13px; padding: 8px 10px; border-left: 3px solid var(--leak); background: var(--sunk); border-radius: 0 6px 6px 0; }
+.leak b { display: block; font-size: 12px; font-family: var(--font-mono); font-weight: 500; color: var(--leak); }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 10px; }
+.kpi { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; }
+.kpi .v { font-family: var(--font-display); font-size: 28px; font-weight: 700; display: block; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+.kpi .l { font-size: 12.5px; color: var(--muted); }
+
+/* tabs */
+.tabs { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.tabs .wrap { display: flex; gap: 4px; overflow-x: auto; padding-block: 8px; }
+.tab { border: 1px solid transparent; background: none; padding: 8px 14px; border-radius: 999px; cursor: pointer; font-weight: 500; color: var(--muted); white-space: nowrap; }
+.tab[aria-selected="true"] { background: var(--fg); color: var(--bg); }
+.tab:hover:not([aria-selected="true"]) { border-color: var(--line); color: var(--fg); }
+main { padding-block: 24px 48px; }
+.view { display: grid; gap: 18px; }
+
+/* shared */
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; min-width: 0; }
+.card h2, .card h3 { font-family: var(--font-display); font-weight: 700; margin: 0 0 4px; letter-spacing: -0.01em; text-wrap: balance; }
+.card h2 { font-size: 20px; } .card h3 { font-size: 16px; }
+.note { font-size: 13px; color: var(--muted); margin: 0 0 12px; max-width: 70ch; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 18px; }
+.btn { border: 1px solid var(--fg); background: var(--fg); color: var(--bg); padding: 9px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn.ghost { background: transparent; color: var(--fg); border-color: var(--line); }
+.chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 12px; font-size: 13.5px; cursor: pointer; text-align: left; }
+.chip:hover { border-color: var(--accent); }
+.pill { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 999px; background: var(--sunk); color: var(--muted); font-family: var(--font-mono); }
+.pill.leak { background: var(--leak-soft); color: var(--leak); border: 0; }
+.pill.keep { background: var(--keep-soft); color: var(--keep); }
+.pill.acc { background: var(--accent-soft); color: var(--accent); }
+select, input[type="search"], textarea { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+.status { font-size: 13px; color: var(--muted); }
+.status.err { color: var(--leak); }
+
+/* ask */
+.ask { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; max-width: 820px; }
+.sugs { display: flex; flex-wrap: wrap; gap: 8px; }
+.log { display: grid; gap: 14px; }
+.msg { border-radius: var(--r); padding: 14px 16px; max-width: 100%; min-width: 0; }
+.msg.user { background: var(--fg); color: var(--bg); justify-self: end; max-width: 85%; }
+.msg.bot { background: var(--surface); border: 1px solid var(--line); }
+.msg .who { font-size: 11.5px; font-family: var(--font-mono); color: var(--muted); margin-bottom: 6px; letter-spacing: .04em; text-transform: uppercase; }
+.msg .body { white-space: pre-wrap; overflow-wrap: anywhere; }
+.msg .body h4 { margin: 0 0 6px; font-family: var(--font-display); font-size: 17px; white-space: normal; }
+.cite { font-family: var(--font-mono); font-size: 12px; border: 1px solid var(--accent); color: var(--accent); background: var(--accent-soft); border-radius: 5px; padding: 0 5px; cursor: pointer; margin: 0 1px; }
+.cite.bad { border-color: var(--line); color: var(--muted); background: var(--sunk); text-decoration: line-through; cursor: default; }
+.quotes { display: grid; gap: 8px; margin-top: 10px; }
+.q { border-left: 3px solid var(--accent); background: var(--sunk); padding: 8px 10px; border-radius: 0 6px 6px 0; font-size: 13.5px; }
+.q .meta { font-size: 12px; color: var(--muted); margin-top: 4px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.composer { display: flex; gap: 8px; align-items: flex-end; }
+.composer textarea { flex: 1; min-width: 0; min-height: 46px; resize: vertical; }
+
+/* analyzer */
+.an-in textarea { width: 100%; min-height: 150px; resize: vertical; }
+.an-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+.result { border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 12px; background: var(--surface); }
+.result.example { border-style: dashed; }
+.r-head { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+.r-theme { font-family: var(--font-display); font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+.fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); gap: 8px; }
+.f { background: var(--sunk); border-radius: 8px; padding: 8px 10px; min-width: 0; }
+.f .k { font-size: 11.5px; color: var(--muted); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: .04em; }
+.f .val { font-weight: 500; overflow-wrap: anywhere; }
+.sev { display: inline-flex; gap: 3px; vertical-align: middle; margin-left: 6px; }
+.sev i { width: 14px; height: 8px; border-radius: 2px; background: var(--line); display: inline-block; }
+.sev i.on { background: var(--leak); }
+.verify { font-size: 12.5px; }
+.verify.ok { color: var(--keep); } .verify.no { color: var(--leak); }
+.corpus { font-size: 13.5px; background: var(--accent-soft); border-radius: 8px; padding: 10px 12px; }
+
+/* dashboard */
+.dash-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.bars { display: grid; gap: 7px; }
+.brow { display: grid; grid-template-columns: minmax(8rem, 15rem) minmax(0, 1fr) auto; gap: 10px; align-items: center; font-size: 13.5px; }
+.brow .lab { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trk { height: 14px; background: var(--sunk); border-radius: 4px; position: relative; overflow: hidden; }
+.fill { position: absolute; inset: 0 auto 0 0; border-radius: 4px; background: var(--accent); }
+.fill.leak { background: var(--leak); } .fill.keep { background: var(--keep); } .fill.mute { background: var(--muted); opacity: .45; }
+.pair .trk { height: 18px; }
+.pair .fill.a { bottom: 50%; } .pair .fill.b { top: 50%; }
+.brow .val { font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); text-align: right; min-width: 4.5rem; }
+.legend { display: flex; gap: 14px; font-size: 12.5px; color: var(--muted); margin-bottom: 8px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+.tbl { overflow: auto; max-height: 34rem; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+th { text-align: left; font-weight: 600; color: var(--muted); font-size: 12px; padding: 8px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--surface); }
+td { padding: 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+td.n, th.n { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.score { display: inline-flex; align-items: center; gap: 6px; }
+.score i { display: inline-block; height: 8px; border-radius: 4px; background: var(--accent); }
+.ev-tools { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.ev-tools input { flex: 1; min-width: 10rem; }
+
+/* method */
+.steps { margin: 0; padding-left: 20px; display: grid; gap: 8px; max-width: 75ch; }
+footer { border-top: 1px solid var(--line); color: var(--muted); font-size: 12.5px; }
+footer .wrap { padding-block: 18px; display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.loading { color: var(--muted); font-size: 14px; padding: 20px 0; }
+
+.top-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.toplink { font-size: 13.5px; font-weight: 600; text-decoration: none; }
+.toplink:hover { text-decoration: underline; }
+.btn.small { padding: 6px 12px; font-size: 13px; font-weight: 500; }
+.snap { font-size: 12px; color: var(--muted); margin: 10px 0 0; display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.snap b { color: var(--fg); font-weight: 500; }
+.verify-steps { margin: 0; padding-left: 20px; display: grid; gap: 10px; max-width: 80ch; }
+.verify-steps li::marker { font-family: var(--font-mono); color: var(--accent); }
+.dl-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; align-items: center; }
+details.cb summary { cursor: pointer; font-weight: 600; }
+.cb td:first-child { white-space: nowrap; }
+@media (max-width: 560px) {
+  .brow { grid-template-columns: minmax(6rem, 9rem) minmax(0, 1fr) auto; }
+  .hide-sm { display: none; }
+  .msg.user { max-width: 100%; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .msg { animation: rise .25s ease-out; }
+  @keyframes rise { from { transform: translateY(4px); opacity: .6; } to { transform: none; opacity: 1; } }
+}
+</style></head><body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#ask">Groww <span>· SIP Discovery Engine</span></a>
+    <div class="top-actions">
+      <span class="tag hide-sm">Independent case study · not affiliated with Groww</span>
+      <a class="toplink" href="https://claude.ai/artifact/3PGreuPA95CfNzUngyWYTe" target="_blank" rel="noopener">AI Evidence Log ↗</a>
+      <button class="btn ghost small" id="theme-btn" type="button" aria-pressed="false">Dark mode</button>
+    </div>
+  </div>
+</header>
+
+<section class="wrap hero" aria-labelledby="h1">
+  <div>
+    <div class="eyebrow">AI-powered discovery engine</div>
+    <h1 id="h1">Why do first-time investors stop their SIPs?</h1>
+    <p class="lede">The engine read <b class="mono" id="h-scanned">31,353</b> public reviews, forum posts, Reddit threads and YouTube comments, kept the <b class="mono" id="h-rel">899</b> that describe someone's own SIP, and labelled each against a codebook built around one metric: the share of first-time investors with an active SIP 12 months after their first one.</p>
+    <p class="snap mono" id="snap"><span>Data snapshot: collected <b>26 Oct 2026</b></span><span>labelled and checked <b>27 Oct 2026</b></span><span>the same snapshot feeds this engine, the dashboard and the Evidence Log</span></p>
+  </div>
+  <div class="strip" aria-label="How a first SIP leaks out of the metric">
+    <div class="strip-head"><span>One first SIP, month by month. Active = at least one successful instalment in the last 30 days.</span><span class="mono">Month 12 is when it counts</span></div>
+    <div class="months" aria-hidden="true">
+      <div class="mo"></div><div class="mo"></div><div class="mo miss"></div><div class="mo"></div><div class="mo"></div><div class="mo miss"></div><div class="mo miss"></div><div class="mo"></div><div class="mo"></div><div class="mo"></div><div class="mo"></div><div class="mo goal"></div>
+    </div>
+    <div class="mo-l" aria-hidden="true"><span>M1</span><span>M2</span><span>M3</span><span>M4</span><span>M5</span><span>M6</span><span>M7</span><span>M8</span><span>M9</span><span>M10</span><span>M11</span><span>M12</span></div>
+    <div class="leaks">
+      <div class="leak"><b>Chose to stop</b>Expectations, red numbers, money pressure</div>
+      <div class="leak"><b>Payment lapsed</b>Autopay or mandate fails, nobody retries</div>
+      <div class="leak"><b>Paused, never resumed</b>A skip turns into an exit</div>
+      <div class="leak"><b>Cancelled by fund or app</b>Suspensions, step-ups, detail changes</div>
+    </div>
+  </div>
+  <div class="kpis" id="kpis" aria-live="polite">
+    <div class="kpi"><span class="v mono" data-k="rel">899</span><span class="l">posts about someone's own SIP</span></div>
+    <div class="kpi"><span class="v mono" data-k="drop">338</span><span class="l">show a drop signal</span></div>
+    <div class="kpi"><span class="v mono" data-k="invol">72 of 124</span><span class="l">SIPs that ended weren't ended by choice</span></div>
+    <div class="kpi"><span class="v mono" data-k="first">237</span><span class="l">first-time investors</span></div>
+  </div>
+</section>
+
+<nav class="tabs" aria-label="Views">
+  <div class="wrap" role="tablist">
+    <button class="tab" role="tab" data-v="ask" aria-selected="true">Ask Assistant</button>
+    <button class="tab" role="tab" data-v="dashboard" aria-selected="false">Dashboard</button>
+    <button class="tab" role="tab" data-v="analyzer" aria-selected="false">Live Analyzer</button>
+    <button class="tab" role="tab" data-v="method" aria-selected="false">Method &amp; evidence</button>
+  </div>
+</nav>
+
+<main class="wrap">
+  <!-- ASK -->
+  <section class="view" id="v-ask" aria-label="Ask Assistant">
+    <div class="ask">
+      <div>
+        <p class="note">Ask anything about the findings, or pick a question. Answers come only from the labelled posts and cite them, like <span class="cite" aria-hidden="true">k18</span>. Click a citation to read the post. The assistant never recommends funds.</p>
+        <div class="sugs" id="sugs"></div>
+      </div>
+      <div class="log" id="log" aria-live="polite"></div>
+      <form class="composer" id="ask-form">
+        
+        <textarea id="ask-input" rows="2" aria-label="Your question" placeholder="e.g. What do people expect when they start, and how does that compare with what they see?"></textarea>
+        <button class="btn" id="ask-send" type="submit">Send</button>
+        <button class="btn ghost" id="ask-stop" type="button" hidden>Stop</button>
+      </form>
+      <div class="status" id="ask-status"></div>
+    </div>
+  </section>
+
+  <!-- DASHBOARD -->
+  <section class="view" id="v-dashboard" aria-label="Dashboard" hidden>
+    <div class="dash-top">
+      <div>
+        <h2 style="font-family:var(--font-display);margin:0">Where first SIPs leak, and what to fix first</h2>
+        <p class="note" style="margin:4px 0 0" id="d-take"></p>
+      </div>
+      <label class="status">Posts from
+        <select id="d-view">
+          <option value="all">All sources</option>
+          <option value="groww">Groww Play Store reviews only</option>
+          <option value="reddit">Reddit only</option>
+          <option value="forums">TradingQ&amp;A + Upstox forums</option>
+          <option value="youtube">YouTube comments only</option>
+          <option value="first">First-time investors only</option>
+        </select>
+      </label>
+    </div>
+    <div class="grid2">
+      <div class="card"><h3>Where drop signals come from</h3><p class="note">Posts showing someone stopping, pausing or struggling, grouped by the main reason coded.</p><div class="bars" id="d-drivers"></div></div>
+      <div class="card"><h3>How SIPs actually ended</h3><p class="note">Posts that say how the SIP stopped. Orange ones ended without the investor choosing to stop.</p><div class="bars" id="d-mech"></div></div>
+    </div>
+    <div class="card">
+      <h3>Opportunity ranking</h3>
+      <p class="note">Score = reach × link to drop-off × √severity × addressability, top theme = 100. Addressability (0–5) is how much the product can change it without recommending funds or using fear.</p>
+      <div class="tbl"><table><thead><tr><th class="n">#</th><th>Theme</th><th class="n">Posts</th><th class="n">Reach %</th><th class="n">Linked to drop %</th><th class="n hide-sm">Severity</th><th class="n hide-sm">Addressable</th><th class="n">Score</th></tr></thead><tbody id="d-opp"></tbody></table></div>
+    </div>
+    <div class="grid2">
+      <div class="card"><h3>Continuers vs drop-offs</h3><p class="note">Share of each group's posts that mention the theme. Continuer-leaning themes first.</p><div class="legend"><span><i style="background:var(--keep)"></i>Continuers</span><span><i style="background:var(--leak)"></i>Drop-offs</span></div><div class="bars pair" id="d-compare"></div></div>
+      <div class="card"><h3>Recurring unmet needs</h3><p class="note">Stated needs grouped by Claude, counted in code. "Drop" = share of those posts with a drop signal.</p><div class="tbl" style="max-height:28rem"><table><thead><tr><th>Need</th><th class="n">Posts</th><th class="n">Drop %</th><th class="n hide-sm">First-timer %</th></tr></thead><tbody id="d-needs"></tbody></table></div></div>
+    </div>
+    <div class="card">
+      <h3>Every labelled post</h3>
+      <div class="ev-tools">
+        <select id="ev-theme" aria-label="Theme"><option value="">All themes</option></select>
+        <select id="ev-drop" aria-label="Drop signal"><option value="">Any outcome</option><option value="yes">Drop signal</option><option value="no">No drop signal</option></select>
+        <input id="ev-q" type="search" placeholder="Search posts" aria-label="Search posts">
+        <span class="status" id="ev-count"></span>
+      </div>
+      <div class="tbl"><table><thead><tr><th>Ref</th><th>Source</th><th>Main theme</th><th class="hide-sm">What they did</th><th>Evidence</th></tr></thead><tbody id="ev-body"></tbody></table></div>
+    </div>
+  </section>
+
+  <!-- ANALYZER -->
+  <section class="view" id="v-analyzer" aria-label="Live Analyzer" hidden>
+    <div class="grid2">
+      <div class="card an-in">
+        <h2>Label a new post live</h2>
+        <p class="note">Paste a review, comment or forum post, or up to 8 separated by a blank line. Claude labels each against the same codebook and its evidence phrase is checked word-for-word, then the post is compared with the 899 already labelled.</p>
+        <label for="an-text" class="status">Post text</label>
+        <textarea id="an-text"></textarea>
+        <div class="an-row">
+          <label class="status">Source
+            <select id="an-src"><option>Play Store review</option><option>App Store review</option><option>Reddit</option><option>YouTube comment</option><option>Forum post</option><option>Social media</option><option>Other</option></select>
+          </label>
+          <button class="btn" id="an-go" type="button">Analyze</button>
+          <button class="btn ghost" id="an-clear" type="button">Clear</button>
+          <button class="btn ghost" id="an-stop" type="button" hidden>Stop</button>
+        </div>
+        <div class="status" id="an-status" style="margin-top:8px"></div>
+      </div>
+      <div id="an-out" class="view" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <!-- METHOD -->
+  <section class="view" id="v-method" aria-label="Method and evidence" hidden>
+    <div class="card" id="verify">
+      <h2>Check any finding yourself</h2>
+      <p class="note">Every number and answer here traces back to a real public post. A reviewer can follow any claim to its source in a few clicks.</p>
+      <ol class="verify-steps">
+        <li><b>Pick a claim.</b> For example "most SIPs that ended were not ended by choice" in the Dashboard, or any answer in Ask Assistant.</li>
+        <li><b>Open the posts behind it.</b> In Ask Assistant, click a citation such as <span class="cite" aria-hidden="true">k18</span> to see the post's evidence phrase, theme and source. In Dashboard, use <i>Every labelled post</i>: filter by theme or drop signal and search the text.</li>
+        <li><b>Read the original.</b> Click the source name. Reddit and forum links open the exact thread. YouTube links open the video, and Play Store links open the Groww app page, where single reviews or comments can't be linked: search for the quoted phrase there.</li>
+        <li><b>Check the label against the codebook.</b> Compare the post with the theme definitions below. Every evidence phrase was checked by code to appear word-for-word in its post.</li>
+        <li><b>Re-label it independently.</b> Paste the post into the Live Analyzer and see whether a fresh label agrees.</li>
+        <li><b>Recount the numbers.</b> Download the labelled posts as a spreadsheet. Filter <span class="mono">is_drop = TRUE</span> to get the drop signals, or count by <span class="mono">drop_mechanism</span> to rebuild "how SIPs ended".</li>
+        <li><b>Check how far the labels can be trusted.</b> Download the golden-set comparison to see each of the 25 posts with the researcher's label, the engine's label and whether they agreed. The <a href="https://claude.ai/artifact/3PGreuPA95CfNzUngyWYTe" target="_blank" rel="noopener">AI Evidence Log</a> explains the failures and the three corrections the researcher made.</li>
+      </ol>
+      <div class="dl-row">
+        <button class="btn" id="dl-posts" type="button">Download labelled posts (CSV)</button>
+        <button class="btn ghost" id="dl-golden" type="button">Download golden-set comparison (CSV)</button>
+        <span class="status" id="dl-status"></span>
+      </div>
+    </div>
+    <div class="card">
+      <details class="cb">
+        <summary>Codebook: all 30 themes and their definitions</summary>
+        <p class="note" style="margin-top:10px">"Feeds" is which way the theme takes a SIP out of the metric. Addressable (0–5) is how much the product could change it without recommending funds or using fear.</p>
+        <div class="tbl"><table><thead><tr><th>Theme</th><th>Definition</th><th class="hide-sm">Feeds</th><th class="n">Addressable</th></tr></thead><tbody id="m-codebook"></tbody></table></div>
+      </details>
+    </div>
+    <div class="card">
+      <h2>How the engine works</h2>
+      <ol class="steps">
+        <li><b>Collect.</b> Play Store reviews, TradingQ&amp;A and Upstox threads and YouTube comments through a Colab notebook; Reddit through an Apify run. A SIP keyword filter (English and Hindi) keeps candidates. Emails, PAN, phone and account numbers are masked and usernames are never stored.</li>
+        <li><b>Screen.</b> Each unique post is read once: does it describe the writer's own SIP situation? Advice to others, news and polls are screened out.</li>
+        <li><b>Label.</b> Each relevant post gets a main theme, secondary themes, journey stage, what they did, how the SIP ended, the trigger before it, severity, emotion, app area and segment hints, backed by a verbatim phrase from the post. The trigger is kept apart from the cause, so "the market fell" never stands in for why someone stopped.</li>
+        <li><b>Validate.</b> Code forces every label into the codebook's values and checks that each phrase exists in the post. A blind golden set compares the labels with the researcher's own.</li>
+        <li><b>Quantify and answer.</b> Themes are ranked by opportunity score, continuers are compared with drop-offs, needs are grouped and counted. The assistant answers only from these posts and cites them.</li>
+      </ol>
+      <p class="note" style="margin-top:12px">Labels for the 899 posts were applied by Claude in a working session against the written codebook. <span id="ai-note">The Ask Assistant and Live Analyzer call Claude from this page, on the viewer's own Claude account.</span></p>
+    </div>
+    <div class="grid2">
+      <div class="card"><h3>Sources and volume</h3><div class="tbl"><table><thead><tr><th>Source</th><th class="n">Scanned</th><th class="n">Mention SIPs</th><th class="n">Relevant</th></tr></thead><tbody id="m-vol"></tbody></table></div><p class="note" style="margin-top:10px">Only the Play Store reviews are about Groww itself. The App Store feed returned no reviews.</p></div>
+      <div class="card"><h3>Blind golden set</h3><p class="note">The researcher labelled a random sample without seeing the engine's labels. Broad findings hold up. Exact theme labels on single posts do not, so themes are read in aggregate.</p><div class="tbl"><table><thead><tr><th>Compared</th><th class="n">Posts</th><th class="n">Agree %</th><th class="n">Kappa</th></tr></thead><tbody id="m-gold"></tbody></table></div>
+      <h3 style="margin-top:14px">Where the engine failed</h3>
+      <ul class="steps" style="font-size:13.5px">
+        <li><b>Neighbouring themes.</b> "Pause button disabled" was coded <i>Can't flex the SIP</i>; the researcher chose <i>App glitches</i>. The codebook had no tie-break rule.</li>
+        <li><b>A missing theme.</b> Switching from regular to direct plans was forced into <i>Moving SIPs to another platform</i>.</li>
+        <li><b>Literal reading.</b> Complaints from current investors were coded "Not mentioned" instead of <i>Struggling but continuing</i>.</li>
+        <li><b>First-time status.</b> The engine left it Unclear unless stated; the researcher inferred it from tone.</li>
+        <li><b>Relevance edges.</b> App complaints mixing trading and mutual funds were screened out; the researcher kept them.</li>
+      </ul></div>
+    </div>
+    <div class="card"><h3>How the codebook changed</h3><div class="tbl"><table><thead><tr><th>Version</th><th>What changed</th></tr></thead><tbody id="m-changes"></tbody></table></div></div>
+    <div class="card">
+      <h3>Read more</h3>
+      <p class="note" style="margin:0">Full write-up with sources, agreement rates, failure patterns and the researcher's corrections to the AI's labels: <a href="https://claude.ai/artifact/3PGreuPA95CfNzUngyWYTe" target="_blank" rel="noopener">AI Evidence Log</a>. Source-level charts with drill-down: <a href="https://claude.ai/artifact/9UzxjvVsyUJ6Q5L9R5oHka" target="_blank" rel="noopener">SIP Retention Dashboard</a>.</p>
+    </div>
+  </section>
+</main>
+
+<footer><div class="wrap"><span>Groww SIP Discovery Engine · independent fellowship case study on public posts</span><span>No fund or stock recommendations · no fear, FOMO or urgency</span></div></footer>
+
+<script>
+(() => {
+  // ---------------- state & helpers ----------------
+  const S = { items: [], byRef: {}, themes: {}, needs: {}, answers: [], volume: [], golden: [], changes: [], codebook: null, idx: null, sample: undefined, mode: null };
+  // On a normal website (e.g. Vercel) the AI runs through this site's /api endpoints; inside Claude it runs through Claude.
+  async function apiCall(path, body, signal) {
+    let r;
+    try { r = await fetch(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal }); }
+    catch (e) { throw { code: e && e.name === 'AbortError' ? 'cancelled' : 'upstream_error' }; }
+    let d = {}; try { d = await r.json(); } catch (e) { /* not JSON */ }
+    if (!r.ok) throw { code: d.code || 'upstream_error' };
+    return d;
+  }
+  const $ = (s, r = document) => r.querySelector(s);
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
+  const fmt = (n) => Number(n).toLocaleString('en-IN');
+  const yes = (x) => x === true || x === 'true';
+  const VIEWS = { all: () => true, groww: (r) => r.view === 'groww', reddit: (r) => r.view === 'reddit', forums: (r) => r.view === 'forums', youtube: (r) => r.view === 'youtube', first: (r) => r.first_timer === 'yes' };
+  const OPS = ['mandate_payment_failure', 'app_trust_reliability', 'support_gap', 'fund_suspension', 'pause_skip_friction', 'modification_cancels_sip', 'account_status_change', 'tenure_ended', 'debit_date_mismatch'];
+  const LIFE = ['cash_flow_squeeze', 'liquidity_withdrawal'];
+  const MOVE = ['chasing_alternatives', 'platform_switch'];
+  const fam = (t) => OPS.includes(t) ? 'ops' : LIFE.includes(t) ? 'life' : MOVE.includes(t) ? 'move' : (t === 'other' || t === 'starting_out' || String(t).startsWith('enabler')) ? 'other' : 'und';
+  const FAM_LABEL = { ops: 'The SIP machinery failed them', und: 'What they expected or understood', life: 'Money or life pressure', move: 'Moved to something else', other: 'Other' };
+  const LEAK = { deliberate_stop: 'Chose to stop', passive_lapse: 'Payment failed or lapsed', pause_not_resumed: 'Paused, never resumed', system_cancelled: 'Cancelled by fund or platform', reduced_amount: 'Reduced the amount', not_applicable: 'Not applicable' };
+  const human = (s) => String(s || '').replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
+  const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9ऀ-ॿ஀-௿]+/g, ' ').trim();
+  const SAMPLE_COPY = {
+    not_granted: 'Claude is switched off for this page. Allow it from the artifact\'s permissions to ask questions.',
+    sampling_disabled: 'Claude isn\'t available for this account.',
+    not_declared: 'This page can no longer ask Claude.', capability_disabled: 'Claude can\'t be used in this view.', capability_removed: 'This app version can\'t ask Claude from a page.',
+    rate_limited: 'Too many requests right now. Wait a minute, then try again.',
+    session_expired: 'Your session expired. Sign in again, then retry.',
+    refused: 'Claude declined this request. Try rewording it.',
+    empty_completion: 'Claude returned nothing. Try a shorter or simpler request.',
+    invalid_json: 'The labels came back in an unreadable format. Try again.',
+    prompt_too_large: 'That is too much text at once. Send fewer or shorter posts.',
+    upstream_error: 'The AI couldn\'t be reached. Try again.',
+    no_key: 'The site owner hasn\'t added the AI key yet, so only the suggested questions work.',
+    busy: 'The AI is busy right now (free-tier limit). Try again in a minute.',
+    too_long: 'That is too long. Shorten the question or send fewer posts.',
+  };
+  const copyFor = (code) => SAMPLE_COPY[code] || SAMPLE_COPY.upstream_error;
+  const HIDE_CODES = ['not_granted', 'sampling_disabled', 'not_declared', 'capability_disabled', 'capability_removed'];
+
+  // ---------------- routing ----------------
+  const ROUTES = ['ask', 'dashboard', 'analyzer', 'method'];
+  function show(v) {
+    if (!ROUTES.includes(v)) v = 'ask';
+    ROUTES.forEach((r) => { $('#v-' + r).hidden = r !== v; });
+    document.querySelectorAll('.tab').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.v === v)));
+  }
+  document.querySelectorAll('.tab').forEach((b) => b.addEventListener('click', () => { if (location.hash !== '#' + b.dataset.v) location.hash = b.dataset.v; else show(b.dataset.v); }));
+  window.addEventListener('hashchange', () => show(location.hash.slice(1)));
+  show(location.hash.slice(1));
+
+  // ---------------- retrieval (BM25 over the labelled posts) ----------------
+  const STOP = new Set('a an the and or of to in on for is it my i me we you he she they this that with be are was were have has had do does did not no so if at as by from but can will would should could just also then than there their them what when how why which who sip sips mutual fund funds mf'.split(' '));
+  const toks = (s) => norm(s).split(' ').filter((w) => w.length > 1 && !STOP.has(w));
+  function buildIndex(items) {
+    const docs = items.map((r) => toks([r.text, r.quote, r.theme, r.unmet_need, r.behaviour_change, r.action, r.stage].join(' ')));
+    const df = {}; docs.forEach((d) => new Set(d).forEach((w) => { df[w] = (df[w] || 0) + 1; }));
+    const avg = docs.reduce((s, d) => s + d.length, 0) / Math.max(1, docs.length);
+    return { docs, df, avg, N: docs.length };
+  }
+  function search(q, { k = 25, filter } = {}) {
+    const ix = S.idx; const qt = [...new Set(toks(q))];
+    if (!qt.length) return [];
+    const out = [];
+    S.items.forEach((r, i) => {
+      if (filter && !filter(r)) return;
+      const d = ix.docs[i]; if (!d.length) return;
+      const tf = {}; d.forEach((w) => { tf[w] = (tf[w] || 0) + 1; });
+      let s = 0;
+      qt.forEach((w) => { if (!tf[w]) return; const idf = Math.log(1 + (ix.N - ix.df[w] + 0.5) / (ix.df[w] + 0.5)); s += idf * (tf[w] * 2.2) / (tf[w] + 1.2 * (0.25 + 0.75 * d.length / ix.avg)); });
+      if (s > 0) out.push([s, r]);
+    });
+    return out.sort((a, b) => b[0] - a[0]).slice(0, k).map((x) => x[1]);
+  }
+
+  // ---------------- analysis (same formulas as the evidence dashboard) ----------------
+  function stats(view = 'all') {
+    const rows = S.items.filter(VIEWS[view]);
+    const drop = rows.filter((r) => yes(r.is_drop)); const cont = rows.filter((r) => yes(r.is_continue));
+    const drivers = {}; drop.forEach((r) => { const f = fam(r.theme_id); drivers[f] = (drivers[f] || 0) + 1; });
+    const mech = {}; rows.filter((r) => r.drop_mechanism !== 'not_applicable').forEach((r) => { mech[r.drop_mechanism] = (mech[r.drop_mechanism] || 0) + 1; });
+    const by = {}; rows.forEach((r) => String(r.all_themes).split('|').forEach((t) => { (by[t] = by[t] || []).push(r); }));
+    const n = Math.max(1, rows.length);
+    let opp = [];
+    for (const [id, g] of Object.entries(by)) {
+      const t = S.themes[id]; if (!t || t.kind !== 'risk' || id === 'other') continue;
+      const reach = g.length / n, d = g.filter((r) => yes(r.is_drop)).length / g.length, sev = g.reduce((s, r) => s + Number(r.severity), 0) / g.length / 3, addr = Number(t.addressability) / 5;
+      opp.push({ id, theme: t.name, mentions: g.length, reach, drop: d, sev: sev * 3, addr: Number(t.addressability), raw: reach * Math.max(d, .01) * Math.sqrt(Math.max(sev, .01)) * Math.max(addr, .01) });
+    }
+    const max = Math.max(1e-9, ...opp.map((o) => o.raw));
+    opp = opp.sort((a, b) => b.raw - a.raw).map((o, i) => ({ ...o, rank: i + 1, score: Math.round(100 * o.raw / max) }));
+    const has = (r, id) => String(r.all_themes).split('|').includes(id);
+    const compare = Object.values(S.themes).filter((t) => t.id !== 'other' && t.id !== 'starting_out').map((t) => {
+      const nd = drop.filter((r) => has(r, t.id)).length, nc = cont.filter((r) => has(r, t.id)).length;
+      return { id: t.id, theme: t.name, nd, nc, dp: drop.length ? 100 * nd / drop.length : 0, cp: cont.length ? 100 * nc / cont.length : 0 };
+    }).filter((x) => x.nd + x.nc >= 3);
+    const needs = Object.values(S.needs).map((nd) => { const g = rows.filter((r) => r.need_group === nd.id); return g.length ? { need: nd.need, n: g.length, dp: Math.round(100 * g.filter((r) => yes(r.is_drop)).length / g.length), fp: Math.round(100 * g.filter((r) => r.first_timer === 'yes').length / g.length) } : null; }).filter(Boolean).sort((a, b) => b.n - a.n);
+    const ended = Object.values(mech).reduce((s, x) => s + x, 0);
+    const invol = (mech.passive_lapse || 0) + (mech.system_cancelled || 0) + (mech.pause_not_resumed || 0);
+    return { rows, drop, cont, drivers, mech, opp, compare, needs, ended, invol, first: rows.filter((r) => r.first_timer === 'yes').length };
+  }
+
+  function bars(box, rows, { label, value, valText, cls, max }) {
+    const m = max || Math.max(1, ...rows.map(value));
+    box.replaceChildren(...rows.map((r) => {
+      const row = el('div', 'brow'); row.title = label(r) + ': ' + (valText ? valText(r) : value(r));
+      row.append(el('span', 'lab', label(r)));
+      const t = el('span', 'trk'); const f = el('span', 'fill ' + (cls ? cls(r) : '')); f.style.width = (100 * value(r) / m) + '%'; t.append(f); row.append(t);
+      row.append(el('span', 'val', valText ? valText(r) : fmt(value(r))));
+      return row;
+    }));
+  }
+
+  // ---------------- dashboard ----------------
+  function drawDashboard() {
+    const v = $('#d-view').value; const st = stats(v);
+    $('#d-take').textContent = `${fmt(st.rows.length)} posts in view. Of ${fmt(st.drop.length)} with a drop signal, ${fmt(st.drivers.ops || 0)} trace to the SIP machinery and ${fmt(st.drivers.und || 0)} to expectations or understanding. ${fmt(st.invol)} of ${fmt(st.ended)} SIPs that ended were not ended by choice.`;
+    bars($('#d-drivers'), ['ops', 'und', 'life', 'move', 'other'].filter((k) => st.drivers[k]).map((k) => ({ k, n: st.drivers[k] })), { label: (r) => FAM_LABEL[r.k], value: (r) => r.n, valText: (r) => `${fmt(r.n)} · ${Math.round(100 * r.n / Math.max(1, st.drop.length))}%`, cls: (r) => (r.k === 'ops' || r.k === 'und') ? '' : 'mute' });
+    bars($('#d-mech'), Object.entries(st.mech).map(([m, n]) => ({ m, n })).sort((a, b) => b.n - a.n), { label: (r) => LEAK[r.m] || r.m, value: (r) => r.n, cls: (r) => r.m === 'deliberate_stop' || r.m === 'reduced_amount' ? 'mute' : 'leak' });
+    $('#d-opp').replaceChildren(...st.opp.map((o) => {
+      const tr = el('tr');
+      tr.append(el('td', 'n', String(o.rank)), el('td', '', o.theme), el('td', 'n', fmt(o.mentions)), el('td', 'n', (100 * o.reach).toFixed(1)), el('td', 'n', String(Math.round(100 * o.drop))), el('td', 'n hide-sm', o.sev.toFixed(1)), el('td', 'n hide-sm', String(o.addr)));
+      const td = el('td', 'n'); const s = el('span', 'score'); const b = el('i'); b.style.width = (o.score * 0.6) + 'px'; s.append(b, el('span', '', String(o.score))); td.append(s); tr.append(td);
+      return tr;
+    }));
+    const cmp = st.compare.sort((a, b) => (b.cp - b.dp) - (a.cp - a.dp));
+    const m = Math.max(1, ...cmp.map((x) => Math.max(x.cp, x.dp)));
+    $('#d-compare').replaceChildren(...cmp.map((x) => {
+      const row = el('div', 'brow'); row.title = `${x.theme}: continuers ${x.cp.toFixed(0)}% (${x.nc}), drop-offs ${x.dp.toFixed(0)}% (${x.nd})`;
+      row.append(el('span', 'lab', x.theme));
+      const t = el('span', 'trk'); const a = el('span', 'fill keep a'); a.style.width = (100 * x.cp / m) + '%'; const b = el('span', 'fill leak b'); b.style.width = (100 * x.dp / m) + '%'; t.append(a, b); row.append(t);
+      row.append(el('span', 'val', `${x.cp.toFixed(0)}% / ${x.dp.toFixed(0)}%`));
+      return row;
+    }));
+    $('#d-needs').replaceChildren(...st.needs.map((x) => { const tr = el('tr'); tr.append(el('td', '', x.need), el('td', 'n', fmt(x.n)), el('td', 'n', String(x.dp)), el('td', 'n hide-sm', String(x.fp))); return tr; }));
+    drawEvidence();
+  }
+  function drawEvidence() {
+    const v = $('#d-view').value, th = $('#ev-theme').value, dr = $('#ev-drop').value, q = $('#ev-q').value.trim().toLowerCase();
+    const rows = S.items.filter((r) => VIEWS[v](r) && (!th || r.theme === th) && (!dr || (dr === 'yes') === yes(r.is_drop)) && (!q || (r.text + ' ' + r.quote + ' ' + r.theme).toLowerCase().includes(q)));
+    $('#ev-count').textContent = fmt(rows.length) + ' posts';
+    $('#ev-body').replaceChildren(...rows.slice(0, 400).map((r) => {
+      const tr = el('tr');
+      tr.append(el('td', 'mono', r.ref));
+      const s = el('td'); s.append(link(r)); tr.append(s);
+      tr.append(el('td', '', r.theme), el('td', 'hide-sm', r.action), el('td', '', '“' + r.quote + '”'));
+      return tr;
+    }));
+    if (rows.length > 400) { const tr = el('tr'); const td = el('td', 'status', `Showing the first 400 of ${fmt(rows.length)}. Narrow with search or a theme.`); td.colSpan = 5; tr.append(td); $('#ev-body').append(tr); }
+  }
+  function link(r) {
+    if (/^https?:\/\//.test(r.url || '')) { const a = el('a', '', r.source); a.href = r.url; a.target = '_blank'; a.rel = 'noopener'; return a; }
+    return document.createTextNode(r.source);
+  }
+  ['#d-view'].forEach((s) => $(s).addEventListener('change', drawDashboard));
+  ['#ev-theme', '#ev-drop'].forEach((s) => $(s).addEventListener('change', drawEvidence));
+  $('#ev-q').addEventListener('input', drawEvidence);
+
+  // ---------------- ask assistant ----------------
+  const turns = []; // {q, a} kept for follow-ups
+  let askCtl = null;
+  function quoteCard(r) {
+    const q = el('div', 'q');
+    q.append(el('div', '', '“' + r.quote + '”'));
+    const meta = el('div', 'meta'); meta.append(el('span', 'pill', r.ref), link(r), el('span', '', '· ' + r.theme), el('span', '', '· ' + r.action));
+    q.append(meta); return q;
+  }
+  function renderCited(body, quotesBox, text, allowed) {
+    body.replaceChildren();
+    const parts = String(text).split(/(\[k\d+(?:\s*,\s*k\d+)*\])/g);
+    parts.forEach((p) => {
+      const m = p.match(/^\[(k\d+(?:\s*,\s*k\d+)*)\]$/);
+      if (!m) { body.append(document.createTextNode(p)); return; }
+      m[1].split(/\s*,\s*/).forEach((ref) => {
+        const ok = allowed.has(ref) && S.byRef[ref];
+        const b = el('button', 'cite' + (ok ? '' : ' bad'), ref); b.type = 'button';
+        if (ok) { b.title = 'Show this post'; b.addEventListener('click', () => { const existing = quotesBox.querySelector(`[data-ref="${ref}"]`); if (existing) { existing.remove(); return; } const c = quoteCard(S.byRef[ref]); c.dataset.ref = ref; quotesBox.prepend(c); }); }
+        else b.title = 'Not one of the posts given to the assistant, so it was not counted';
+        body.append(b);
+      });
+    });
+  }
+  function addMsg(who, opts = {}) {
+    const m = el('div', 'msg ' + who); m.append(el('div', 'who', who === 'user' ? 'You' : (opts.label || 'Assistant')));
+    const body = el('div', 'body'); m.append(body); const qb = el('div', 'quotes'); m.append(qb);
+    $('#log').append(m); return { m, body, qb };
+  }
+  function showPrecomputed(a) {
+    const u = addMsg('user'); u.body.textContent = a.question;
+    const b = addMsg('bot', { label: 'From the engine\'s analysis' });
+    const h = el('h4', '', a.headline); b.body.append(h, document.createTextNode(a.answer + '\n\nConfidence: ' + a.confidence));
+    String(a.evidence_ids || '').split('|').map((id) => S.items.find((r) => r.id === id)).filter(Boolean).forEach((r) => b.qb.append(quoteCard(r)));
+    turns.push({ q: a.question, a: a.headline + ' ' + a.answer });
+    b.m.scrollIntoView({ block: 'nearest' });
+  }
+  function statsBrief() {
+    const st = stats('all'); const g = stats('groww');
+    const L = [];
+    L.push(`Posts: ${S.items.length} relevant (sources: ${Object.entries(S.items.reduce((o, r) => (o[r.source] = (o[r.source] || 0) + 1, o), {})).map(([k, v]) => k + ' ' + v).join(', ')}). Only Play Store reviews are about Groww itself.`);
+    L.push(`Drop signals: ${st.drop.length}; continuers: ${st.cont.length}; first-time investors: ${st.first}.`);
+    L.push(`Drop signals by reason group: ` + Object.entries(st.drivers).map(([k, v]) => FAM_LABEL[k] + ' ' + v).join('; ') + '.');
+    L.push(`How SIPs ended (${st.ended} posts say): ` + Object.entries(st.mech).map(([k, v]) => LEAK[k] + ' ' + v).join('; ') + `. Not by choice: ${st.invol}.`);
+    L.push('Opportunity ranking (score, posts, % linked to drop): ' + st.opp.slice(0, 10).map((o) => `${o.rank}. ${o.theme} (${o.score}, ${o.mentions}, ${Math.round(100 * o.drop)}%)`).join('; ') + '.');
+    L.push('Groww Play Store only, top themes: ' + g.opp.slice(0, 5).map((o) => `${o.theme} (${o.mentions})`).join('; ') + '.');
+    L.push('Continuers vs drop-offs (% of each group mentioning): ' + st.compare.sort((a, b) => Math.abs(b.cp - b.dp) - Math.abs(a.cp - a.dp)).slice(0, 8).map((x) => `${x.theme} ${x.cp.toFixed(0)}% vs ${x.dp.toFixed(0)}%`).join('; ') + '.');
+    L.push('Recurring unmet needs (posts, % drop): ' + st.needs.slice(0, 10).map((x) => `${x.need} (${x.n}, ${x.dp}%)`).join('; ') + '.');
+    L.push('Segment fields (income, age, money source) are unstated in at least 94% of posts. Blind check vs the researcher: theme group 67% agreement, exact theme 28%, drop signal 78%.');
+    return L.join('\n');
+  }
+  async function ask(question) {
+    const sample = S.sample;
+    if (!sample && S.mode !== 'api') { $('#ask-status').textContent = 'Free-text questions aren\'t available in this view. The suggested questions above still work.'; return; }
+    const posts = search(question, { k: 28 });
+    const allowed = new Set(posts.map((r) => r.ref));
+    const postLines = posts.map((r) => `[${r.ref}] ${r.source} | theme: ${r.theme} | did: ${r.action} | stage: ${r.stage} | first-timer: ${r.first_timer} | quote: "${r.quote}" | text: ${String(r.text).slice(0, 320).replace(/\s+/g, ' ')}`).join('\n');
+    const history = turns.slice(-2).map((t) => `Q: ${t.q}\nA: ${String(t.a).slice(0, 700)}`).join('\n\n');
+    const prompt = `You are the analyst behind a discovery engine about why first-time mutual fund investors in India stop, pause or keep their SIPs. It supports a product case study for Groww's growth team. The metric: the share of first-time investors with an active SIP (at least one successful instalment in the last 30 days) 12 months after their first SIP.
+
+Rules:
+- Answer ONLY from STATS and POSTS below. If they don't support an answer, say "The collected posts don't show this" and name the data that would (for example interviews or Groww's own data).
+- Cite posts as [k123] right after the claim they support. Use only refs listed in POSTS. Cite at least two when you make a claim about patterns.
+- Use numbers from STATS as given. Counts from POSTS are only the posts retrieved for this question, not the whole dataset: don't present them as totals.
+- Never recommend funds, stocks, or whether to buy, sell, start or stop. No fear, FOMO or urgency. If asked for investment advice, say in one sentence that the engine doesn't give it, then answer what the posts show about the need behind the question.
+- Say when the evidence is thin (fewer than 5 relevant posts) or mostly not about Groww.
+- Format: one plain sentence that answers, then 3 to 6 short "- " bullets, then a last line "Confidence: high / medium / low, because ...". Under 230 words. No headings, no bold.
+
+STATS (whole dataset):
+${statsBrief()}
+
+POSTS (retrieved for this question, ${posts.length}):
+${postLines || '(none matched)'}
+${history ? '\nEARLIER IN THIS CONVERSATION:\n' + history + '\n' : ''}
+QUESTION: ${question}`;
+    const u = addMsg('user'); u.body.textContent = question;
+    const b = addMsg('bot'); b.body.textContent = 'Thinking… (reading ' + posts.length + ' matching posts)';
+    askCtl = new AbortController(); $('#ask-send').disabled = true; $('#ask-stop').hidden = false; $('#ask-status').textContent = '';
+    try {
+      const { text, truncated } = S.mode === 'api'
+        ? await apiCall('/api/ask', { question, refs: posts.map((r) => r.ref), history: turns.slice(-2).map((t) => ({ q: String(t.q).slice(0, 300), a: String(t.a).slice(0, 700) })) }, askCtl.signal)
+        : await sample(prompt, { signal: askCtl.signal, cache: false, onText: ({ text }) => renderCited(b.body, b.qb, text, allowed) });
+      renderCited(b.body, b.qb, text, allowed);
+      const bad = b.body.querySelectorAll('.cite.bad').length;
+      const meta = el('div', 'status', `Answered from ${posts.length} retrieved posts plus whole-dataset stats.` + (bad ? ` ${bad} citation(s) didn't match a retrieved post and are struck through.` : '') + (truncated ? ' The answer was cut short.' : ''));
+      b.m.append(meta);
+      turns.push({ q: question, a: text });
+    } catch (e) {
+      if (e && e.text) renderCited(b.body, b.qb, e.text, allowed); else b.body.textContent = '';
+      if (!e || e.code !== 'cancelled') { $('#ask-status').textContent = copyFor(e && e.code); $('#ask-status').className = 'status err'; if (!e.text) b.m.remove(); }
+      if (e && HIDE_CODES.includes(e.code)) { S.sample = null; }
+    } finally { $('#ask-send').disabled = false; $('#ask-stop').hidden = true; askCtl = null; }
+  }
+  $('#ask-form').addEventListener('submit', (ev) => { ev.preventDefault(); const q = $('#ask-input').value.trim(); if (!q || askCtl) return; $('#ask-input').value = ''; $('#ask-status').className = 'status'; ask(q); });
+  $('#ask-input').addEventListener('keydown', (ev) => { if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); $('#ask-form').requestSubmit(); } });
+  $('#ask-stop').addEventListener('click', () => askCtl && askCtl.abort());
+
+  // ---------------- live analyzer ----------------
+  const EXAMPLE_REF = 'k18';
+  let anCtl = null;
+  function codebookText() {
+    const cb = S.codebook;
+    const th = cb.themes.map((t) => `${t.id}: ${t.name}. ${t.definition} [leak: ${t.metric_leak}]`).join('\n');
+    const f = Object.entries(cb.fields).map(([k, v]) => `${k}: ${v.join(' | ')}`).join('\n');
+    return `THEMES (use the id):\n${th}\n\nALLOWED VALUES:\n${f}\nfirst_time_investor: yes | likely | no | unclear\nseverity: 0 (none) to 3 (stopped or about to)\n\nRULES:\n- ${cb.rules.join('\n- ')}`;
+  }
+  function validate(o) {
+    const cb = S.codebook; const ids = new Set(cb.themes.map((t) => t.id)); const fixes = [];
+    const pick = (k, allowed, d) => { if (!allowed.includes(o[k])) { if (o[k] !== undefined) fixes.push(k); o[k] = d; } };
+    o.relevant = o.relevant === true || o.relevant === 'true';
+    if (!ids.has(o.primary_theme)) { if (o.relevant) fixes.push('primary_theme'); o.primary_theme = o.relevant ? 'other' : null; }
+    o.secondary_themes = (Array.isArray(o.secondary_themes) ? o.secondary_themes : []).filter((t) => ids.has(t) && t !== o.primary_theme).slice(0, 3);
+    pick('journey_stage', cb.fields.journey_stage, 'unclear'); pick('sip_action', cb.fields.sip_action, 'none_mentioned'); pick('drop_mechanism', cb.fields.drop_mechanism, 'not_applicable');
+    pick('trigger', cb.fields.trigger, 'none_mentioned'); pick('emotion', cb.fields.emotion, 'neutral'); pick('app_area', cb.fields.app_area, 'none_mentioned');
+    pick('first_time_investor', ['yes', 'likely', 'no', 'unclear'], 'unclear');
+    o.severity = Math.max(0, Math.min(3, parseInt(o.severity, 10) || 0));
+    o.evidence_quote = String(o.evidence_quote || ''); o.unmet_need = String(o.unmet_need || ''); o.why = String(o.why || '');
+    o._fixes = fixes; return o;
+  }
+  function resultCard(o, text, { example = false, ref = null } = {}) {
+    const card = el('div', 'result' + (example ? ' example' : ''));
+    if (example) card.append(el('div', 'status', `Example: how the engine labelled this ${S.byRef[ref].source} post (${ref}) in the dataset. Press "Analyze" to label it live, or "Clear" and paste your own.`));
+    const head = el('div', 'r-head');
+    if (!o.relevant) {
+      head.append(el('span', 'r-theme', 'Not about the writer\'s own SIP'), el('span', 'pill', 'screened out'));
+      card.append(head); if (o.why) card.append(el('div', 'note', o.why)); return card;
+    }
+    const t = S.themes[o.primary_theme] || { name: o.primary_theme, metric_leak: '', addressability: '' };
+    head.append(el('span', 'r-theme', t.name));
+    const pills = el('span'); pills.style.display = 'flex'; pills.style.gap = '6px'; pills.style.flexWrap = 'wrap';
+    const isDrop = ['considering_stop', 'paused', 'reduced', 'stopped'].includes(o.sip_action) || o.severity >= 2 || ['deliberate_stop', 'passive_lapse', 'pause_not_resumed', 'system_cancelled', 'reduced_amount'].includes(o.drop_mechanism);
+    pills.append(el('span', 'pill ' + (isDrop ? 'leak' : 'keep'), isDrop ? 'drop signal' : 'no drop signal'));
+    if (t.metric_leak && t.metric_leak !== 'enabler' && t.metric_leak !== 'neutral') pills.append(el('span', 'pill acc', 'feeds: ' + (LEAK[t.metric_leak] || human(t.metric_leak))));
+    if (t.metric_leak === 'enabler') pills.append(el('span', 'pill keep', 'keeps people investing'));
+    head.append(pills); card.append(head);
+    if (o.secondary_themes.length) card.append(el('div', 'status', 'Also: ' + o.secondary_themes.map((x) => (S.themes[x] || {}).name || x).join(' · ')));
+    const fields = el('div', 'fields');
+    const F = (k, v, extra) => { const f = el('div', 'f'); f.append(el('div', 'k', k)); const val = el('div', 'val', v); if (extra) val.append(extra); f.append(val); fields.append(f); };
+    F('What they did', human(o.sip_action)); F('How it ended', LEAK[o.drop_mechanism] || human(o.drop_mechanism)); F('Trigger', human(o.trigger));
+    F('Time since starting', human(o.journey_stage)); F('First-time investor', human(o.first_time_investor)); F('App area', human(o.app_area));
+    const sev = el('span', 'sev'); for (let i = 1; i <= 3; i++) sev.append(el('i', i <= o.severity ? 'on' : '')); F('Severity', String(o.severity), sev);
+    F('Emotion', human(o.emotion)); F('Addressable in product', t.addressability !== '' ? t.addressability + ' / 5' : '—');
+    card.append(fields);
+    if (o.evidence_quote) {
+      const ok = norm(text).includes(norm(o.evidence_quote)) && norm(o.evidence_quote).length > 0;
+      const q = el('div', 'q'); q.append(el('div', '', '“' + o.evidence_quote + '”'));
+      const m = el('div', 'meta'); m.append(el('span', 'verify ' + (ok ? 'ok' : 'no'), ok ? '✓ phrase found word-for-word in the post' : '✗ phrase not found in the post, so treat this label with caution'));
+      q.append(m); card.append(q);
+    }
+    if (o.unmet_need) card.append(el('div', '', 'Unmet need: ' + o.unmet_need));
+    if (o.why && !example) card.append(el('div', 'note', o.why));
+    if (o._fixes && o._fixes.length) card.append(el('div', 'status', 'Corrected to codebook values: ' + o._fixes.join(', ')));
+    // corpus comparison
+    const st = stats('all'); const op = st.opp.find((x) => x.id === o.primary_theme);
+    const same = S.items.filter((r) => String(r.all_themes).split('|').includes(o.primary_theme));
+    const c = el('div', 'corpus');
+    c.textContent = same.length ? `In the dataset, ${fmt(same.length)} of ${fmt(S.items.length)} posts mention this theme` + (op ? `; it ranks #${op.rank} of ${st.opp.length} opportunities and ${Math.round(100 * op.drop)}% of those posts show a drop signal.` : '.') : 'No post in the dataset has this theme yet.';
+    card.append(c);
+    const sim = search(text, { k: 3, filter: (r) => r.theme_id === o.primary_theme && r.ref !== ref });
+    if (sim.length) { const box = el('div', 'quotes'); box.append(el('div', 'status', 'Similar posts in the dataset')); sim.forEach((r) => box.append(quoteCard(r))); card.append(box); }
+    return card;
+  }
+  function showExample() {
+    const r = S.byRef[EXAMPLE_REF]; if (!r) return;
+    $('#an-text').value = r.text;
+    const o = { relevant: true, primary_theme: r.theme_id, secondary_themes: String(r.all_themes).split('|').filter((t) => t !== r.theme_id), sip_action: (S.codebook.fields.sip_action.find((x) => human(x) === r.action) || 'none_mentioned'), drop_mechanism: r.drop_mechanism, trigger: r.trigger, journey_stage: S.codebook.fields.journey_stage.find((x) => human(x) === r.stage) || 'unclear', first_time_investor: r.first_timer === 'yes' ? 'yes' : 'unclear', app_area: S.codebook.fields.app_area.find((x) => human(x) === r.app_area) || 'none_mentioned', severity: r.severity, emotion: r.emotion, evidence_quote: r.quote, unmet_need: r.unmet_need };
+    $('#an-out').replaceChildren(resultCard(o, r.text, { example: true, ref: EXAMPLE_REF }));
+  }
+  async function analyze() {
+    const sample = S.sample;
+    if (!sample && S.mode !== 'api') { $('#an-status').textContent = 'Live labelling isn\'t available in this view.'; return; }
+    const posts = $('#an-text').value.split(/\n\s*\n/).map((s) => s.trim()).filter(Boolean).slice(0, 8);
+    if (!posts.length) { $('#an-status').textContent = 'Paste a post first.'; return; }
+    const src = $('#an-src').value;
+    const prompt = `Label each post below with the SIP-retention codebook. The study is about first-time mutual fund investors in India and whether their SIP stays active 12 months after they start.
+
+${codebookText()}
+
+Relevant = the post describes the writer's (or a named person's) own SIP situation, decision, question or experience. Generic advice to others, news and polls are not relevant.
+
+Reply with only a JSON array, one object per post, in the same order:
+[{"relevant": true, "primary_theme": "<theme id>", "secondary_themes": ["<id>"], "journey_stage": "...", "sip_action": "...", "drop_mechanism": "...", "trigger": "...", "first_time_investor": "...", "severity": 0, "emotion": "...", "app_area": "...", "evidence_quote": "<exact words copied from the post, 4-15 words, any language as written>", "unmet_need": "<what they need, short, or empty>", "why": "<one sentence on the label>"}]
+For a post that is not relevant, return {"relevant": false, "why": "..."}.
+
+Source of every post: ${src}
+${posts.map((p, i) => `POST ${i + 1}:\n"""\n${p.slice(0, 3000)}\n"""`).join('\n\n')}`;
+    anCtl = new AbortController(); $('#an-go').disabled = true; $('#an-stop').hidden = false;
+    $('#an-status').className = 'status'; $('#an-status').textContent = `Labelling ${posts.length} post${posts.length > 1 ? 's' : ''}… this usually takes 10–40 seconds.`;
+    try {
+      let out = S.mode === 'api'
+        ? (await apiCall('/api/analyze', { posts, source: src }, anCtl.signal)).labels
+        : await sample.json(prompt, { signal: anCtl.signal });
+      if (!Array.isArray(out)) out = [out];
+      const cards = posts.map((p, i) => resultCard(validate(Object.assign({}, out[i] || { relevant: false, why: 'No label came back for this post.' })), p));
+      if (posts.length > 1) {
+        const sum = el('div', 'card'); sum.append(el('h3', '', `${posts.length} posts labelled`));
+        const by = {}; out.forEach((o) => { const v = validate(Object.assign({}, o)); const k = v.relevant ? ((S.themes[v.primary_theme] || {}).name || v.primary_theme) : 'Not relevant'; by[k] = (by[k] || 0) + 1; });
+        const bx = el('div', 'bars'); bars(bx, Object.entries(by).map(([k, n]) => ({ k, n })).sort((a, b) => b.n - a.n), { label: (r) => r.k, value: (r) => r.n }); sum.append(bx);
+        $('#an-out').replaceChildren(sum, ...cards);
+      } else $('#an-out').replaceChildren(...cards);
+      $('#an-status').textContent = 'Labelled live by Claude against the codebook. Evidence phrases were checked in this page.';
+    } catch (e) {
+      if (!e || e.code !== 'cancelled') { $('#an-status').className = 'status err'; $('#an-status').textContent = copyFor(e && e.code); }
+      else $('#an-status').textContent = 'Stopped.';
+      if (e && HIDE_CODES.includes(e.code)) S.sample = null;
+    } finally { $('#an-go').disabled = false; $('#an-stop').hidden = true; anCtl = null; }
+  }
+  $('#an-go').addEventListener('click', analyze);
+  $('#an-stop').addEventListener('click', () => anCtl && anCtl.abort());
+  $('#an-clear').addEventListener('click', () => {
+    if (anCtl) anCtl.abort();
+    $('#an-text').value = ''; $('#an-out').replaceChildren(); $('#an-status').className = 'status'; $('#an-status').textContent = '';
+    $('#an-text').focus();
+  });
+
+  // ---------------- method ----------------
+  function drawMethod() {
+    $('#m-vol').replaceChildren(...S.volume.map((r) => { const tr = el('tr'); tr.append(el('td', '', r.source), el('td', 'n', fmt(r.scanned || 0)), el('td', 'n', fmt(r.keyword_kept || 0)), el('td', 'n', fmt(r.relevant || 0))); return tr; }));
+    $('#m-gold').replaceChildren(...S.golden.map((r) => { const tr = el('tr'); tr.append(el('td', '', r.label), el('td', 'n', String(r.n)), el('td', 'n', String(r.rate_pct)), el('td', 'n', r.kappa == null ? '' : String(r.kappa))); return tr; }));
+    $('#m-changes').replaceChildren(...S.changes.map((r) => { const tr = el('tr'); tr.append(el('td', 'mono', r.version), el('td', '', r.change)); return tr; }));
+    $('#m-codebook').replaceChildren(...S.codebook.themes.map((t) => { const tr = el('tr'); tr.append(el('td', '', t.name), el('td', '', t.definition), el('td', 'hide-sm', t.metric_leak === 'enabler' ? 'Keeps people investing' : t.metric_leak === 'neutral' ? '—' : (LEAK[t.metric_leak] || human(t.metric_leak))), el('td', 'n', String(t.addressability))); return tr; }));
+  }
+
+  // ---------------- downloads for reviewers ----------------
+  const csvCell = (v) => { const s = v === null || v === undefined ? '' : String(v); return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  function postsCsv() {
+    const cols = ['ref', 'source', 'date', 'url', 'theme', 'all_themes', 'stage', 'action', 'drop_mechanism', 'trigger', 'first_timer', 'severity', 'is_drop', 'is_continue', 'quote', 'quote_verified', 'unmet_need', 'need_group', 'text'];
+    const head = cols.join(',');
+    const lines = S.items.map((r) => cols.map((c) => c === 'all_themes' ? csvCell(String(r.all_themes).split('|').map((t) => (S.themes[t] || {}).name || t).join('; ')) : c === 'is_drop' || c === 'is_continue' || c === 'quote_verified' ? (yes(r[c]) ? 'TRUE' : 'FALSE') : csvCell(r[c])).join(','));
+    return '﻿' + [head, ...lines].join('\r\n');
+  }
+  let downloads;
+  async function offer(filename, getData) {
+    const st = $('#dl-status'); st.className = 'status';
+    if (!downloads) {
+      // A normal website: hand the file to the browser directly.
+      try {
+        const data = await getData();
+        const url = URL.createObjectURL(new Blob([data], { type: 'text/csv;charset=utf-8' }));
+        const a = el('a'); a.href = url; a.download = filename; document.body.append(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        st.textContent = 'Downloading ' + filename + '.';
+      } catch (e) { st.className = 'status err'; st.textContent = 'The file couldn\'t be prepared.'; }
+      return;
+    }
+    try { st.textContent = 'Preparing…'; const data = await getData(); const r = await downloads.save({ filename, data }); st.textContent = r.status === 'saved' ? 'Saved ' + filename + '.' : ''; }
+    catch (e) { st.textContent = e && e.code === 'declined' ? '' : e && e.code === 'rate_limited' ? 'A save prompt is already open. Finish it, then try again.' : 'The file couldn\'t be saved here.'; if (e && e.code !== 'declined' && e.code !== 'rate_limited') st.className = 'status err'; }
+  }
+  $('#dl-posts').addEventListener('click', () => offer('groww_sip_labelled_posts.csv', async () => postsCsv()));
+  $('#dl-golden').addEventListener('click', () => offer('groww_sip_golden_set_comparison.csv', async () => { const r = await fetch('golden_compare.csv'); if (!r.ok) throw new Error('missing'); return '﻿' + await r.text(); }));
+
+  // ---------------- theme switch ----------------
+  const root = document.documentElement; const tb = $('#theme-btn');
+  const mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  const isDark = () => { const t = root.getAttribute('data-theme'); return t ? t === 'dark' : !!(mq && mq.matches); };
+  const syncBtn = () => { const d = isDark(); tb.textContent = d ? 'Light mode' : 'Dark mode'; tb.setAttribute('aria-pressed', String(d)); };
+  let savedTheme = null; try { savedTheme = localStorage.getItem('sde-theme'); } catch (e) { /* storage blocked */ }
+  if (savedTheme === 'dark' || savedTheme === 'light') root.setAttribute('data-theme', savedTheme);
+  syncBtn();
+  if (mq && mq.addEventListener) mq.addEventListener('change', syncBtn);
+  tb.addEventListener('click', () => { const next = isDark() ? 'light' : 'dark'; root.setAttribute('data-theme', next); try { localStorage.setItem('sde-theme', next); } catch (e) { /* ignore */ } syncBtn(); });
+
+  // ---------------- boot ----------------
+  function drawSuggestions() {
+    const box = $('#sugs');
+    box.replaceChildren(...S.answers.slice().sort((a, b) => a.q - b.q).map((a) => { const c = el('button', 'chip', a.question); c.type = 'button'; c.addEventListener('click', () => showPrecomputed(a)); return c; }));
+  }
+  function drawHero() {
+    const st = stats('all');
+    const scanned = S.volume.reduce((s, r) => s + (Number(r.scanned) || 0), 0);
+    $('#h-scanned').textContent = fmt(scanned); $('#h-rel').textContent = fmt(S.items.length);
+    const K = { rel: fmt(S.items.length), drop: fmt(st.drop.length), invol: `${fmt(st.invol)} of ${fmt(st.ended)}`, first: fmt(st.first) };
+    document.querySelectorAll('[data-k]').forEach((e) => { e.textContent = K[e.dataset.k]; });
+  }
+  $('#log').append(Object.assign(el('div', 'loading'), { id: 'boot', textContent: 'Loading the 899 labelled posts…' }));
+  Promise.all(['items', 'themes', 'needs', 'answers', 'volume', 'golden', 'codebook_changes', 'codebook'].map((f) => fetch(f + '.json').then((r) => { if (!r.ok) throw new Error(f); return r.json(); })))
+    .then(([items, themes, needs, answers, volume, golden, changes, codebook]) => {
+      Object.assign(S, { items, answers, volume, golden, changes, codebook });
+      items.forEach((r) => { S.byRef[r.ref] = r; });
+      themes.forEach((t) => { S.themes[t.id] = t; }); needs.forEach((n) => { S.needs[n.id] = n; });
+      S.idx = buildIndex(items);
+      [...new Set(items.map((r) => r.theme))].sort().forEach((n) => $('#ev-theme').append(new Option(n, n)));
+      $('#boot')?.remove();
+      drawHero(); drawSuggestions(); drawDashboard(); drawMethod(); showExample();
+      const first = S.answers.find((a) => a.q === 3); if (first) showPrecomputed(first);
+    })
+    .catch(() => { const b = $('#boot'); if (b) b.textContent = 'The data files didn\'t load. Reload the page to try again.'; });
+
+  // Claude, for free-text questions and live labelling; downloads for reviewers
+  if (window.claude && window.claude.use) {
+    window.claude.use('downloads').then((d) => { downloads = d; if (!d) { $('#dl-status').textContent = 'File downloads aren\'t available in this view.'; } }).catch(() => { downloads = null; });
+    window.claude.use('sample').then((s) => { S.sample = s; if (!s) { $('#ask-status').textContent = 'Free-text questions and live labelling need Claude, which this view can\'t reach. Suggested questions, the dashboard and the example still work.'; $('#an-go').disabled = true; } }).catch(() => { S.sample = null; });
+  } else {
+    S.sample = null; downloads = null;
+    $('#an-go').disabled = true;
+    fetch('/api/health').then((r) => (r.ok ? r.json() : null)).then((h) => {
+      if (h && h.ai) {
+        S.mode = 'api'; $('#an-go').disabled = false;
+        $('#ai-note').textContent = 'On this website, the Ask Assistant and Live Analyzer run on Google Gemini through the site\'s own server; the 899 stored labels were made by Claude.';
+      } else {
+        $('#ask-status').textContent = h ? 'The AI key isn\'t set up on this site yet, so typed questions and live labelling are off. Suggested questions, the dashboard and the example still work.' : 'Typed questions and live labelling aren\'t available here. Suggested questions, the dashboard and the example still work.';
+      }
+    }).catch(() => { /* no API on this host */ });
+  }
+})();
+</script>
+</body></html>

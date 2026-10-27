@@ -1,0 +1,7 @@
+{
+  "name": "groww-sip-discovery",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI discovery engine: why first-time investors stop their SIPs (Groww case study).",
+  "engines": { "node": ">=18" }
+}
