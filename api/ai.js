@@ -76,6 +76,7 @@ async function tryModel(model, prompt, json, key) {
   let msg = ''; try { msg = (JSON.parse(t).error || {}).message || ''; } catch (e) { msg = t; }
   msg = String(msg).slice(0, 300);
   if (r.status === 404 || ((r.status === 400 || r.status === 403) && GONE.test(msg))) return { skip: true, detail: msg };
+  if (r.status >= 500) return { skip: true, busy: true, detail: msg }; // overloaded: try the next model
   if (r.status === 429) throw { status: 429, code: 'busy', detail: msg };
   if ((r.status === 400 || r.status === 403) && /API key|permission|PERMISSION_DENIED/i.test(msg)) throw { status: 503, code: 'no_key', detail: msg };
   throw { status: 502, code: 'upstream_error', detail: `${model} ${r.status}: ${msg}` };
@@ -83,13 +84,14 @@ async function tryModel(model, prompt, json, key) {
 async function gemini(prompt, json) {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw { status: 503, code: 'no_key' };
-  const tried = new Set(); let last = '';
+  const tried = new Set(); let last = ''; let sawBusy = false;
   const attempt = async (list) => {
     for (const model of list) {
       if (tried.has(model)) continue; tried.add(model);
       const out = await tryModel(model, prompt, json, key);
       if (!out.skip) { picked = model; return out; }
       last = `${model}: ${out.detail}`;
+      if (out.busy) sawBusy = true;
       if (picked === model) picked = null;
     }
     return null;
@@ -98,6 +100,7 @@ async function gemini(prompt, json) {
   if (first) return first;
   const found = await attempt((await listFlashModels(key)).slice(0, 6));
   if (found) return found;
+  if (sawBusy) throw { status: 503, code: 'busy', detail: 'Gemini is overloaded right now. ' + last };
   throw { status: 502, code: 'upstream_error', detail: 'No Gemini model answered. ' + last };
 }
 
