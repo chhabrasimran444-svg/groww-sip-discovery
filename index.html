@@ -115,6 +115,20 @@ select, input[type="search"], textarea { background: var(--surface); border: 1px
 .quotes { display: grid; gap: 8px; margin-top: 10px; }
 .q { border-left: 3px solid var(--accent); background: var(--sunk); padding: 8px 10px; border-radius: 0 6px 6px 0; font-size: 13.5px; }
 .q .meta { font-size: 12px; color: var(--muted); margin-top: 4px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.qlabel { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.q .qt { overflow-wrap: anywhere; }
+.linkbtn { background: none; border: 0; padding: 2px 0; color: var(--accent); cursor: pointer; font-size: 13px; justify-self: start; text-decoration: underline; }
+.quick { margin-top: 10px; }
+.quick:empty { display: none; }
+.quick-btn::after { content: " ▾"; }
+.quick-btn[aria-expanded="true"]::after { content: " ▴"; }
+.quick-body { margin-top: 8px; background: var(--sunk); border-radius: 8px; padding: 10px 12px; font-size: 14px; }
+.quick-body ul { margin: 0; padding-left: 18px; }
+.quick-body li { margin-bottom: 4px; }
+.quick-body li:last-child { margin-bottom: 0; }
+.quick-body .conf { margin: 8px 0 0; font-size: 12.5px; color: var(--muted); }
+.msg .body h4:last-child { margin-bottom: 0; }
+.small-status { margin-top: 8px; font-size: 12px; }
 .composer { display: flex; gap: 8px; align-items: flex-end; }
 .composer textarea { flex: 1; min-width: 0; min-height: 46px; resize: vertical; }
 
@@ -258,7 +272,7 @@ details.cb summary { cursor: pointer; font-weight: 600; }
   <section class="view" id="v-ask" aria-label="Ask Assistant">
     <div class="ask">
       <div>
-        <p class="note">Ask anything about the findings, or pick a question. Answers come only from the labelled posts and cite them, like <span class="cite" aria-hidden="true">k18</span>. Click a citation to read the post. The assistant never recommends funds.</p>
+        <p class="note">Ask anything about the findings, or pick a question. Answers come only from the labelled posts. Each answer shows a short takeaway and the posts behind it; tap <b>Engine's quick analysis</b> for the key numbers. The assistant never recommends funds.</p>
         <div class="sugs" id="sugs"></div>
       </div>
       <div class="log" id="log" aria-live="polite"></div>
@@ -344,7 +358,7 @@ details.cb summary { cursor: pointer; font-weight: 600; }
       <p class="note">Every number and answer here traces back to a real public post. A reviewer can follow any claim to its source in a few clicks.</p>
       <ol class="verify-steps">
         <li><b>Pick a claim.</b> For example "most SIPs that ended were not ended by choice" in the Dashboard, or any answer in Ask Assistant.</li>
-        <li><b>Open the posts behind it.</b> In Ask Assistant, click a citation such as <span class="cite" aria-hidden="true">k18</span> to see the post's evidence phrase, theme and source. In Dashboard, use <i>Every labelled post</i>: filter by theme or drop signal and search the text.</li>
+        <li><b>Open the posts behind it.</b> In Ask Assistant, each answer lists the posts behind it with their source; open <i>Engine's quick analysis</i> for the numbers. In Dashboard, use <i>Every labelled post</i>: filter by theme or drop signal and search the text.</li>
         <li><b>Read the original.</b> Click the source name. Reddit and forum links open the exact thread. YouTube links open the video, and Play Store links open the Groww app page, where single reviews or comments can't be linked: search for the quoted phrase there.</li>
         <li><b>Check the label against the codebook.</b> Compare the post with the theme definitions below. Every evidence phrase was checked by code to appear word-for-word in its post.</li>
         <li><b>Re-label it independently.</b> Paste the post into the Live Analyzer and see whether a fresh label agrees.</li>
@@ -713,35 +727,57 @@ details.cb summary { cursor: pointer; font-weight: 600; }
   let askCtl = null;
   function quoteCard(r) {
     const q = el('div', 'q');
-    q.append(el('div', '', '“' + r.quote + '”'));
-    const meta = el('div', 'meta'); meta.append(el('span', 'pill', r.ref), link(r), el('span', '', '· ' + r.theme), el('span', '', '· ' + r.action));
-    q.append(meta); return q;
+    const t = String(r.quote || '');
+    const qt = el('div', 'qt', '“' + (t.length > 150 ? t.slice(0, 147).trimEnd() + '…' : t) + '”'); if (t.length > 150) qt.title = t;
+    const meta = el('div', 'meta'); meta.append(link(r), el('span', '', '· ' + r.theme));
+    q.append(qt, meta); return q;
   }
-  function renderCited(body, quotesBox, text, allowed) {
-    body.replaceChildren();
-    const parts = String(text).split(/(\[k\d+(?:\s*,\s*k\d+)*\])/g);
-    parts.forEach((p) => {
-      const m = p.match(/^\[(k\d+(?:\s*,\s*k\d+)*)\]$/);
-      if (!m) { body.append(document.createTextNode(p)); return; }
-      m[1].split(/\s*,\s*/).forEach((ref) => {
-        const ok = allowed.has(ref) && S.byRef[ref];
-        const b = el('button', 'cite' + (ok ? '' : ' bad'), ref); b.type = 'button';
-        if (ok) { b.title = 'Show this post'; b.addEventListener('click', () => { const existing = quotesBox.querySelector(`[data-ref="${ref}"]`); if (existing) { existing.remove(); return; } const c = quoteCard(S.byRef[ref]); c.dataset.ref = ref; quotesBox.prepend(c); }); }
-        else b.title = 'Not one of the posts given to the assistant, so it was not counted';
-        body.append(b);
-      });
-    });
+  function postsBlock(box, rows) {
+    box.replaceChildren();
+    if (!rows.length) return;
+    box.append(el('div', 'qlabel', 'What investors said'));
+    const SHOW = 3;
+    rows.slice(0, SHOW).forEach((r) => box.append(quoteCard(r)));
+    if (rows.length > SHOW) {
+      const more = el('button', 'linkbtn', `Show ${rows.length - SHOW} more post${rows.length - SHOW > 1 ? 's' : ''}`); more.type = 'button';
+      more.addEventListener('click', () => { rows.slice(SHOW).forEach((r) => box.insertBefore(quoteCard(r), more)); more.remove(); });
+      box.append(more);
+    }
+  }
+  function quickBox(tail, bullets, conf, open) {
+    tail.replaceChildren();
+    if (!bullets.length && !conf) return;
+    const btn = el('button', 'btn ghost small quick-btn', 'Engine\'s quick analysis'); btn.type = 'button';
+    const body = el('div', 'quick-body'); body.hidden = !open; btn.setAttribute('aria-expanded', String(!!open));
+    if (bullets.length) { const ul = el('ul'); bullets.forEach((x) => ul.append(el('li', '', x))); body.append(ul); }
+    if (conf) body.append(el('p', 'conf', 'Confidence: ' + conf.replace(/^confidence:\s*/i, '')));
+    btn.addEventListener('click', () => { body.hidden = !body.hidden; btn.setAttribute('aria-expanded', String(!body.hidden)); });
+    tail.append(btn, body);
+  }
+  // Live answers: citations like [k12] are used to pick the posts shown, then removed from the text.
+  function renderLive(b, text, allowed) {
+    const refs = []; let bad = 0;
+    const clean = String(text).replace(/\[(k\d+(?:\s*,\s*k\d+)*)\]/g, (_, g) => { g.split(/\s*,\s*/).forEach((r) => { if (allowed.has(r) && S.byRef[r]) { if (!refs.includes(r)) refs.push(r); } else bad++; }); return ''; }).replace(/[ \t]+([.,;:])/g, '$1').replace(/[ \t]{2,}/g, ' ');
+    const lines = clean.split('\n').map((l) => l.trim()).filter(Boolean);
+    let conf = ''; const bullets = []; const summary = [];
+    lines.forEach((l) => { if (/^confidence\s*:/i.test(l)) conf = l; else if (/^[-•*]\s+/.test(l)) bullets.push(l.replace(/^[-•*]\s+/, '')); else summary.push(l); });
+    b.body.replaceChildren(el('h4', '', summary.join(' ') || 'Here is what the posts show.'));
+    postsBlock(b.qb, refs.map((r) => S.byRef[r]));
+    const wasOpen = !!(b.tail.querySelector('.quick-body') && !b.tail.querySelector('.quick-body').hidden);
+    quickBox(b.tail, bullets, conf, wasOpen);
+    return { bad, cited: refs.length };
   }
   function addMsg(who, opts = {}) {
-    const m = el('div', 'msg ' + who); m.append(el('div', 'who', who === 'user' ? 'You' : (opts.label || 'Assistant')));
-    const body = el('div', 'body'); m.append(body); const qb = el('div', 'quotes'); m.append(qb);
-    $('#log').append(m); return { m, body, qb };
+    const m = el('div', 'msg ' + who); m.append(el('div', 'who', who === 'user' ? 'You' : (opts.label || 'Answer')));
+    const body = el('div', 'body'); m.append(body); const qb = el('div', 'quotes'); m.append(qb); const tail = el('div', 'quick'); m.append(tail);
+    $('#log').append(m); return { m, body, qb, tail };
   }
   function showPrecomputed(a) {
     const u = addMsg('user'); u.body.textContent = a.question;
-    const b = addMsg('bot', { label: 'From the engine\'s analysis' });
-    const h = el('h4', '', a.headline); b.body.append(h, document.createTextNode(a.answer + '\n\nConfidence: ' + a.confidence));
-    String(a.evidence_ids || '').split('|').map((id) => S.items.find((r) => r.id === id)).filter(Boolean).forEach((r) => b.qb.append(quoteCard(r)));
+    const b = addMsg('bot', { label: 'Answer' });
+    b.body.append(el('h4', '', a.headline));
+    postsBlock(b.qb, String(a.evidence_ids || '').split('|').map((id) => S.items.find((r) => r.id === id)).filter(Boolean));
+    quickBox(b.tail, a.quick || [], a.quick_conf || a.confidence, false);
     turns.push({ q: a.question, a: a.headline + ' ' + a.answer });
     b.m.scrollIntoView({ block: 'nearest' });
   }
@@ -774,7 +810,7 @@ Rules:
 - Use numbers from STATS as given. Counts from POSTS are only the posts retrieved for this question, not the whole dataset: don't present them as totals.
 - Never recommend funds, stocks, or whether to buy, sell, start or stop. No fear, FOMO or urgency. If asked for investment advice, say in one sentence that the engine doesn't give it, then answer what the posts show about the need behind the question.
 - Say when the evidence is thin (fewer than 5 relevant posts) or mostly not about Groww.
-- Format: one plain sentence that answers, then 3 to 6 short "- " bullets, then a last line "Confidence: high / medium / low, because ...". Under 230 words. No headings, no bold.
+- Format: one plain sentence that answers (under 25 words), then 2 to 4 "- " bullets of under 20 words each with the key numbers, then a last line "Confidence: high / medium / low, because ...". Under 140 words. No headings, no bold, no markdown other than the bullets.
 
 STATS (whole dataset):
 ${statsBrief()}
@@ -785,18 +821,18 @@ ${history ? '\nEARLIER IN THIS CONVERSATION:\n' + history + '\n' : ''}
 QUESTION: ${question}`;
     const u = addMsg('user'); u.body.textContent = question;
     const b = addMsg('bot'); b.body.textContent = 'Thinking… (reading ' + posts.length + ' matching posts)';
+    let res = { bad: 0 };
     askCtl = new AbortController(); $('#ask-send').disabled = true; $('#ask-stop').hidden = false; $('#ask-status').textContent = '';
     try {
       const { text, truncated } = S.mode === 'api'
         ? await apiCall('/api/ai?op=ask', { question, refs: posts.map((r) => r.ref), history: turns.slice(-2).map((t) => ({ q: String(t.q).slice(0, 300), a: String(t.a).slice(0, 700) })) }, askCtl.signal)
-        : await sample(prompt, { signal: askCtl.signal, cache: false, onText: ({ text }) => renderCited(b.body, b.qb, text, allowed) });
-      renderCited(b.body, b.qb, text, allowed);
-      const bad = b.body.querySelectorAll('.cite.bad').length;
-      const meta = el('div', 'status', `Answered from ${posts.length} retrieved posts plus whole-dataset stats.` + (bad ? ` ${bad} citation(s) didn't match a retrieved post and are struck through.` : '') + (truncated ? ' The answer was cut short.' : ''));
+        : await sample(prompt, { signal: askCtl.signal, cache: false, onText: ({ text }) => renderLive(b, text, allowed) });
+      res = renderLive(b, text, allowed);
+      const meta = el('div', 'status small-status', `Based on ${posts.length} matching posts and whole-dataset numbers.` + (res.bad ? ` ${res.bad} reference(s) to other posts were ignored.` : '') + (truncated ? ' The answer was cut short.' : ''));
       b.m.append(meta);
       turns.push({ q: question, a: text });
     } catch (e) {
-      if (e && e.text) renderCited(b.body, b.qb, e.text, allowed); else b.body.textContent = '';
+      if (e && e.text) renderLive(b, e.text, allowed); else b.body.textContent = '';
       if (!e || e.code !== 'cancelled') { $('#ask-status').textContent = copyFor(e && e.code); $('#ask-status').className = 'status err'; if (!e.text) b.m.remove(); }
       if (e && HIDE_CODES.includes(e.code)) { S.sample = null; }
     } finally { $('#ask-send').disabled = false; $('#ask-stop').hidden = true; askCtl = null; }
@@ -993,7 +1029,7 @@ ${posts.map((p, i) => `POST ${i + 1}:\n"""\n${p.slice(0, 3000)}\n"""`).join('\n\
       [...new Set(items.map((r) => r.theme))].sort().forEach((n) => $('#ev-theme').append(new Option(n, n)));
       $('#boot')?.remove();
       drawHero(); drawSuggestions(); drawDashboard(); drawMethod(); showExample();
-      const first = S.answers.find((a) => a.q === 3); if (first) showPrecomputed(first);
+      // The chat starts empty: answers appear only when a question is picked or asked.
     })
     .catch(() => { const b = $('#boot'); if (b) b.textContent = 'The data files didn\'t load. Reload the page to try again.'; });
 
