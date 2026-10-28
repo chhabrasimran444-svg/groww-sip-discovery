@@ -129,6 +129,13 @@ select, input[type="search"], textarea { background: var(--surface); border: 1px
 .quick-body .conf { margin: 8px 0 0; font-size: 12.5px; color: var(--muted); }
 .msg .body h4:last-child { margin-bottom: 0; }
 .small-status { margin-top: 8px; font-size: 12px; }
+.segwrap { max-height: none; margin-top: 4px; }
+.segtbl td, .segtbl th { font-size: 13px; padding: 6px 8px; }
+.segtbl tr.axis td { font-family: var(--font-mono); font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); background: var(--sunk); }
+.pill.small { font-size: 10.5px; padding: 0 6px; margin-left: 6px; }
+.segcmp { margin: 10px 0 0; font-size: 14px; }
+.refs { white-space: nowrap; }
+.quick-body .cite { font-size: 11px; }
 .composer { display: flex; gap: 8px; align-items: flex-end; }
 .composer textarea { flex: 1; min-width: 0; min-height: 46px; resize: vertical; }
 
@@ -781,6 +788,122 @@ details.cb summary { cursor: pointer; font-weight: 600; }
     turns.push({ q: a.question, a: a.headline + ' ' + a.answer });
     b.m.scrollIntoView({ block: 'nearest' });
   }
+  // ---------------- segmentation: computed live from the labelled posts, never pre-written ----------------
+  const SEG_AXES = [
+    { key: 'income', title: 'Income stability', field: 'income', strong: true, groups: [
+      { label: 'Steady income (salaried)', values: ['salaried'] },
+      { label: 'Variable or no regular income', values: ['irregular_or_self_employed', 'student_or_no_income'] }] },
+    { key: 'influence', title: 'Who got them started', field: 'influence', strong: true, groups: [
+      { label: 'Self-started (own research)', values: ['own_research'] },
+      { label: 'Influenced by others', values: ['youtube_or_finfluencer', 'advisor_or_bank', 'friends_family', 'colleagues', 'app_marketing'] }] },
+    { key: 'age', title: 'Age', field: 'age', strong: false, groups: [
+      { label: 'Under 25', values: ['under_25'] }, { label: '25 to 35', values: ['25_to_35'] }, { label: 'Over 35', values: ['over_35'] }] },
+    { key: 'money', title: 'Source of money', field: 'money', strong: false, groups: [
+      { label: 'Salary', values: ['salary'] }, { label: 'Savings', values: ['savings'] }, { label: 'Parents or pocket money', values: ['parents_or_pocket_money'] },
+      { label: 'Bonus or windfall', values: ['bonus_or_windfall'] }, { label: 'Business or freelance', values: ['business_or_freelance'] }] },
+  ];
+  const SUB_LABEL = { irregular_or_self_employed: 'self-employed or irregular', student_or_no_income: 'student or no income', youtube_or_finfluencer: 'YouTuber or finfluencer', advisor_or_bank: 'agent, advisor or bank', friends_family: 'family or friends', colleagues: 'colleagues', app_marketing: 'app marketing' };
+  const SEG_AXIS_RE = /\bincome|\bsalar|\bstudents?\b|self[- ]?employ|freelanc|daily wage|\bages?\b|\bage group|\byoung|\bolder\b|influenc|youtubers?\b|finfluencer|\bagents?\b|\bpeers?\b|source of (their )?money|money source|\bmoney come/i;
+  const SEG_INTENT_RE = /differ|compar|\bvs\.?\b|versus|across|between|\bthan\b|more likely|less likely|\bby (income|age|influence|source)|which (group|segment|kind|type)|split|break ?down|pattern/i;
+  const isSegQ = (q) => /\bsegment|demograph|\bcohort/i.test(q) || (SEG_AXIS_RE.test(q) && SEG_INTENT_RE.test(q));
+  const SMALL = 10;
+  function segOf(rows) {
+    const drop = rows.filter((r) => yes(r.is_drop)), cont = rows.filter((r) => yes(r.is_continue));
+    const byTheme = {}; drop.forEach((r) => { (byTheme[r.theme] = byTheme[r.theme] || []).push(r); });
+    const top = Object.entries(byTheme).sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0])).slice(0, 3).map(([theme, rs]) => ({ theme, n: rs.length, refs: rs.slice(0, 2).map((r) => r.ref) }));
+    return { rows, n: rows.length, drop, cont, top };
+  }
+  function refChips(refs, host) {
+    const span = el('span', 'refs');
+    refs.filter((r) => S.byRef[r]).forEach((ref) => {
+      const b = el('button', 'cite', ref); b.type = 'button'; b.title = 'Show this post';
+      b.addEventListener('click', () => { const ex = host.querySelector(`[data-ref="${ref}"]`); if (ex) { ex.remove(); return; } const c = quoteCard(S.byRef[ref]); c.dataset.ref = ref; host.prepend(c); });
+      span.append(b);
+    });
+    return span;
+  }
+  function showSegmentation(question) {
+    const u = addMsg('user'); u.body.textContent = question;
+    const b = addMsg('bot', { label: 'Answer · computed live from the labelled posts' });
+    const N = S.items.length;
+    const pc = (x, d = N) => (d ? (100 * x / d).toFixed(1) : '0') + '%';
+    const known = (ax) => S.items.filter((r) => r[ax.field] && r[ax.field] !== 'unclear');
+    const strong = SEG_AXES.filter((a) => a.strong);
+    const kInc = known(strong[0]), kInf = known(strong[1]);
+    const anyClue = S.items.filter((r) => SEG_AXES.some((a) => r[a.field] && r[a.field] !== 'unclear'));
+    const noClue = segOf(S.items.filter((r) => !anyClue.includes(r)));
+
+    b.body.append(el('h4', '', `Only ${kInc.length} of ${N} posts (${pc(kInc.length)}) reveal income stability and ${kInf.length} (${pc(kInf.length)}) say who got them started, so these segments are hypotheses to test, not findings.`));
+
+    // compact table: strong axes plus the insufficient-signal bucket
+    const tbl = el('table', 'segtbl');
+    const hr = el('tr'); ['Segment', 'Posts', 'Continue · Drop', 'Top drop themes'].forEach((h, i) => hr.append(el('th', i === 1 || i === 2 ? 'n' : '', h)));
+    const thead = el('thead'); thead.append(hr); tbl.append(thead);
+    const tb = el('tbody');
+    const detail = [];
+    strong.forEach((ax) => {
+      const ah = el('tr', 'axis'); const td = el('td', '', ax.title); td.colSpan = 4; ah.append(td); tb.append(ah);
+      ax.groups.forEach((g) => {
+        const sg = segOf(S.items.filter((r) => g.values.includes(r[ax.field])));
+        const subs = g.values.length > 1 ? g.values.map((v) => [SUB_LABEL[v] || v, S.items.filter((r) => r[ax.field] === v).length]).filter((x) => x[1]).map((x) => `${x[0]} ${x[1]}`).join(', ') : '';
+        const tr = el('tr');
+        const c1 = el('td', '', g.label); if (sg.n < SMALL) c1.append(el('span', 'pill small', 'too few'));
+        tr.append(c1, el('td', 'n', `${sg.n} (${pc(sg.n)})`), el('td', 'n', `${sg.cont.length} · ${sg.drop.length}`),
+          el('td', '', sg.top.length ? sg.top.map((t) => `${t.theme} (${t.n})`).join('; ') : 'No drop posts'));
+        tb.append(tr);
+        detail.push({ label: `${ax.title}, ${g.label.toLowerCase()}`, sg, subs });
+      });
+    });
+    const ir = el('tr', 'axis'); const itd = el('td', '', 'Insufficient signal'); itd.colSpan = 4; ir.append(itd); tb.append(ir);
+    const nr = el('tr'); nr.append(el('td', '', 'No segment clue in the text'), el('td', 'n', `${noClue.n} (${pc(noClue.n)})`), el('td', 'n', `${noClue.cont.length} · ${noClue.drop.length}`), el('td', '', noClue.top.map((t) => `${t.theme} (${t.n})`).join('; ')));
+    tb.append(nr); tbl.append(tb);
+    const tw = el('div', 'tbl segwrap'); tw.append(tbl); b.qb.append(tw);
+
+    // one line: what most separates continuers from drop-offs, among posts with any segment clue
+    const FAMS = ['und', 'ops', 'life', 'move'];
+    const FAM_SHORT = { und: 'understanding and expectations', ops: 'operations (autopay, app, fund, support)', life: 'affordability and life pressure', move: 'moving elsewhere' };
+    const famShare = (rows) => { const o = {}; FAMS.forEach((f) => { o[f] = rows.filter((r) => fam(r.theme_id) === f); }); return o; };
+    const pool = segOf(anyClue);
+    const dF = famShare(pool.drop), cF = famShare(pool.cont), aD = famShare(stats('all').drop), aC = famShare(stats('all').cont);
+    const gap = (f) => (pool.drop.length ? dF[f].length / pool.drop.length : 0) - (pool.cont.length ? cF[f].length / pool.cont.length : 0);
+    const best = FAMS.slice().sort((x, y) => gap(y) - gap(x))[0];
+    const allDrop = stats('all').drop.length, allCont = stats('all').cont.length;
+    const cmp = el('p', 'segcmp');
+    cmp.append(el('b', '', 'What most separates them: '), document.createTextNode(`${FAM_SHORT[best]}. Among the ${anyClue.length} posts with any segment clue, it explains ${pc(dF[best].length, pool.drop.length)} of drop-off posts (${dF[best].length} of ${pool.drop.length}) but ${pc(cF[best].length, pool.cont.length)} of continuer posts (${cF[best].length} of ${pool.cont.length}); across all ${N} posts it is ${pc(aD[best].length, allDrop)} vs ${pc(aC[best].length, allCont)}. `));
+    const cmpHost = el('div', 'quotes'); cmp.append(refChips(dF[best].slice(0, 3).map((r) => r.ref), cmpHost));
+    b.qb.append(cmp, cmpHost);
+
+    // details on demand, every claim with post IDs
+    b.tail.replaceChildren();
+    const btn = el('button', 'btn ghost small quick-btn', 'Engine\'s quick analysis'); btn.type = 'button'; btn.setAttribute('aria-expanded', 'false');
+    const box = el('div', 'quick-body'); box.hidden = true;
+    const host = el('div', 'quotes');
+    const ul = el('ul');
+    detail.forEach(({ label, sg, subs }) => {
+      const li = el('li');
+      li.append(el('b', '', label + ': '), document.createTextNode(`${sg.n} posts (${pc(sg.n)})${subs ? ' — ' + subs : ''}. `), refChips(sg.rows.slice(0, 2).map((r) => r.ref), host));
+      li.append(document.createTextNode(` ${sg.cont.length} continue, ${sg.drop.length} show a drop signal, ${sg.n - sg.cont.length - sg.drop.length} neither. `));
+      sg.top.forEach((t, i) => { li.append(document.createTextNode((i ? '; ' : 'Top drop themes: ') + `${t.theme} ${t.n} `), refChips(t.refs, host)); });
+      if (sg.n < SMALL) li.append(document.createTextNode(' Too few posts to compare.'));
+      ul.append(li);
+    });
+    const li0 = el('li'); li0.append(el('b', '', 'Insufficient signal: '), document.createTextNode(`${noClue.n} posts (${pc(noClue.n)}) give no clue about income, influence, age or money source. They are kept out of the segments rather than guessed. By axis, income is unknown in ${N - kInc.length} posts and who got them started in ${N - kInf.length}.`)); ul.append(li0);
+    SEG_AXES.filter((a) => !a.strong).forEach((ax) => {
+      const k = known(ax); const li = el('li');
+      const parts = ax.groups.map((g) => [g.label, S.items.filter((r) => g.values.includes(r[ax.field]))]).filter((x) => x[1].length);
+      li.append(el('b', '', ax.title + ' (weak axis): '), document.createTextNode(`stated in only ${k.length} posts (${pc(k.length)}); unknown for ${N - k.length}. The text rarely reveals it, so it is not compared. `));
+      parts.forEach(([lab, rs], i) => { li.append(document.createTextNode((i ? '; ' : '') + `${lab} ${rs.length} `), refChips(rs.slice(0, 2).map((r) => r.ref), host)); });
+      ul.append(li);
+    });
+    const ft = (S.golden || []).find((r) => /first-time/i.test(r.label));
+    const unc = el('p', 'conf', `How sure: low. Income and influence are labelled only when a post says so, so each segment is small and skews to people who post in public. First-time status agreed with the researcher on ${ft ? ft.rate_pct + '% of ' + ft.n + ' golden-set posts (kappa ' + ft.kappa.toFixed(2) + ')' : 'few golden-set posts'}, and age was not checked in the golden set at all. Treat every segment here as a hypothesis to confirm in user research, such as the First SIP Experience Survey and interviews.`);
+    box.append(ul, unc, host);
+    btn.addEventListener('click', () => { box.hidden = !box.hidden; btn.setAttribute('aria-expanded', String(!box.hidden)); });
+    b.tail.append(btn, box);
+
+    turns.push({ q: question, a: `Segments computed from labelled posts: income known in ${kInc.length}, influence in ${kInf.length} of ${N}; biggest separator ${FAM_SHORT[best]}.` });
+    b.m.scrollIntoView({ block: 'nearest' });
+  }
   function statsBrief() {
     const st = stats('all'); const g = stats('groww');
     const L = [];
@@ -796,6 +919,7 @@ details.cb summary { cursor: pointer; font-weight: 600; }
     return L.join('\n');
   }
   async function ask(question) {
+    if (isSegQ(question)) { showSegmentation(question); return; }
     const sample = S.sample;
     if (!sample && S.mode !== 'api') { $('#ask-status').textContent = 'Free-text questions aren\'t available in this view. The suggested questions above still work.'; return; }
     const posts = search(question, { k: 28 });
@@ -1010,7 +1134,7 @@ ${posts.map((p, i) => `POST ${i + 1}:\n"""\n${p.slice(0, 3000)}\n"""`).join('\n\
   // ---------------- boot ----------------
   function drawSuggestions() {
     const box = $('#sugs');
-    box.replaceChildren(...S.answers.slice().sort((a, b) => a.q - b.q).map((a) => { const c = el('button', 'chip', a.question); c.type = 'button'; c.addEventListener('click', () => showPrecomputed(a)); return c; }));
+    box.replaceChildren(...S.answers.slice().sort((a, b) => a.q - b.q).map((a) => { const c = el('button', 'chip', a.question); c.type = 'button'; c.addEventListener('click', () => (String(a.q) === '8' ? showSegmentation(a.question) : showPrecomputed(a))); return c; }));
   }
   function drawHero() {
     const st = stats('all');
