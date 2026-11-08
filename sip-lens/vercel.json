@@ -1,0 +1,5 @@
+{
+  "functions": {
+    "api/lens.js": { "maxDuration": 60 }
+  }
+}

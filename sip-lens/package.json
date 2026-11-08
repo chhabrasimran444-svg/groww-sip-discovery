@@ -1,0 +1,8 @@
+{
+  "name": "groww-sip-lens",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SIP Lens: concept prototype of an AI analyser beside a first-time investor's SIP (Groww case study, not affiliated).",
+  "engines": { "node": ">=18" },
+  "scripts": { "dev": "MOCK_NAV=1 node dev/server.js", "eval": "node evals/run.js" }
+}
