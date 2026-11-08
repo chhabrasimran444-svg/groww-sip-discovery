@@ -1,12 +1,13 @@
 // Gemini call with model fallback (same approach as the discovery engine). Key: GEMINI_API_KEY on Vercel.
-const FIXED = [process.env.GEMINI_MODEL, 'gemini-flash-latest', 'gemini-flash-lite-latest'].filter(Boolean);
+// SIP Lens only rewrites short points, so the fast lite model goes first
+const FIXED = [process.env.GEMINI_MODEL, 'gemini-flash-lite-latest', 'gemini-flash-latest'].filter(Boolean);
 let picked = null;      // the model that last worked, reused while the function stays warm
 let discovered = null;  // models found through the list endpoint
 const GONE = /not found|not supported|no longer|deprecated|retired|unavailable|is not available|unknown model|does not exist/i;
 
 function call(model, prompt, config, key) {
   const ctrl = new AbortController();
-  setTimeout(() => ctrl.abort(), Number(process.env.AI_CALL_TIMEOUT_MS || 22000));
+  setTimeout(() => ctrl.abort(), Number(process.env.AI_CALL_TIMEOUT_MS || 14000));
   return fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
     signal: ctrl.signal,
     method: 'POST',
@@ -33,7 +34,8 @@ async function tryModel(model, prompt, json, key) {
   const config = { temperature: 0.2, maxOutputTokens: 4096 };
   if (json) config.responseMimeType = 'application/json';
   if (/^gemini-2\.5/.test(model)) config.thinkingConfig = { thinkingBudget: 0 };
-  let r = await call(model, prompt, config, key);
+  let r;
+  try { r = await call(model, prompt, config, key); } catch (e) { return { skip: true, busy: true, detail: 'timeout' }; } // slow model: try the next one
   if (r.status === 400 && config.thinkingConfig) { delete config.thinkingConfig; r = await call(model, prompt, config, key); }
   if (r.ok) {
     const d = await r.json();

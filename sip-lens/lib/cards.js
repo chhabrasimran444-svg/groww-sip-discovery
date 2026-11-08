@@ -244,7 +244,7 @@ async function write(f, lang) {
   let ai = null;
   try {
     // never let a slow model hold the panel: after AI_TIMEOUT_MS the safe template is returned instead
-    const limit = Number(process.env.AI_TIMEOUT_MS || 30000);
+    const limit = Number(process.env.AI_TIMEOUT_MS || 32000);
     const out = await Promise.race([gemini(prompt(f, lang, draft), true), new Promise((_, rej) => setTimeout(() => rej({ code: 'ai_timeout' }), limit))]);
     ai = JSON.parse(out.text.replace(/^```(?:json)?|```$/g, '').trim());
     report.model = out.model; report.source = 'ai';
