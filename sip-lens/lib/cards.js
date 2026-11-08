@@ -34,6 +34,8 @@ const T = {
         fund: 'The gap comes from the fund’s own holdings, listed in its monthly factsheet.',
       }[s.driver]);
       if (!f.sip.red && s.market != null && s.fund > 0 && s.fund < s.market - 2) out.push('It is up, but by less than the Nifty 50 over the same months.');
+      out.push(f.sip.red ? `Today’s price (₹${f.sip.nav}) is below your average buying price (₹${f.sip.avgNav}); that is why the SIP shows red${s.fund > 0 ? ', even though the fund is up since you started' : ''}.`
+        : `Today’s price (₹${f.sip.nav}) is above your average buying price (₹${f.sip.avgNav}); that is why the SIP shows green.`);
       return out;
     },
     built(f) {
@@ -94,6 +96,8 @@ const T = {
         fund: 'ये फ़र्क फंड की अपनी होल्डिंग्स से है, जो उसकी मासिक factsheet में हैं।',
       }[s.driver]);
       if (!f.sip.red && s.market != null && s.fund > 0 && s.fund < s.market - 2) out.push('ऊपर है, पर इन्हीं महीनों में Nifty 50 से कम।');
+      out.push(f.sip.red ? `आज की कीमत (₹${f.sip.nav}) आपकी औसत खरीद कीमत (₹${f.sip.avgNav}) से कम है; इसीलिए SIP लाल दिखता है${s.fund > 0 ? ', भले ही शुरुआत से फंड ऊपर है' : ''}।`
+        : `आज की कीमत (₹${f.sip.nav}) आपकी औसत खरीद कीमत (₹${f.sip.avgNav}) से ज़्यादा है; इसीलिए SIP हरा दिखता है।`);
       return out;
     },
     built(f) {
@@ -214,7 +218,8 @@ Hard rules (a checker rejects any part that breaks them, and a fixed template is
 4. Calm words only: no crash, panic, disaster, plunge, hurry, missing out.
 5. Never blame the investor. Habits are "what you can build on".
 6. Past falls are history only: the last point of "dips" must say it is history, not a promise.
-7. Every key except "headline" is a JSON array of 2 to 4 short points, each at most 22 words. "headline" is one sentence of at most 30 words.
+7. Every key except "headline" is a JSON array of 2 to 5 short points, each at most 24 words. "headline" is one sentence of at most 30 words.
+8. Keep each point's time period exactly as in DRAFT (for example "since your first instalment" is not "this month").
 
 Return JSON with exactly these keys: headline, why, built, well, better, dips, purpose, habit, stop.
 DRAFT holds a safe version of every key: improve its warmth and clarity, keep its facts, keep the same meaning per key.

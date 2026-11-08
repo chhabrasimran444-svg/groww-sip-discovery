@@ -1,6 +1,6 @@
 # SIP Lens evals
 
-Run: 2026-11-08T20:10 UTC · data: synthetic (offline test)
+Run: 2026-11-08T21:55 UTC · data: synthetic (offline test)
 
 ## 1. Checker catches bad lines and passes good ones
 
