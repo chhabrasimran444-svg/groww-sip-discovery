@@ -46,7 +46,7 @@ const T = {
     },
     well(f) {
       const h = f.habit, out = [h.paid === h.due ? `All ${h.paid} instalments paid on time.` : `${h.paid} of ${h.due} instalments paid.`];
-      if (h.redPaid > 0) out.push(`You invested ${h.redPaid} ${h.redPaid === 1 ? 'time' : 'times'} while your SIP was red, at lower prices.`);
+      if (h.redPaid > 0) out.push(`You kept investing ${h.redPaid} ${h.redPaid === 1 ? 'time' : 'times'} while your SIP was red.`);
       out.push(f.status === 'cancelled' ? `You built ${f.sip.units} units before stopping.` : `You’ve stayed with it for ${f.months} ${f.months === 1 ? 'month' : 'months'}.`);
       return out;
     },
@@ -108,7 +108,7 @@ const T = {
     },
     well(f) {
       const h = f.habit, out = [h.paid === h.due ? `सारी ${h.paid} किस्तें समय पर दीं।` : `${h.due} में से ${h.paid} किस्तें दीं।`];
-      if (h.redPaid > 0) out.push(`SIP लाल होने पर भी ${h.redPaid} बार निवेश किया, कम कीमत पर।`);
+      if (h.redPaid > 0) out.push(`SIP लाल होने पर भी ${h.redPaid} बार निवेश किया।`);
       out.push(f.status === 'cancelled' ? `रोकने से पहले ${f.sip.units} units बनाए।` : `आप ${f.months} महीने से इसके साथ हैं।`);
       return out;
     },
