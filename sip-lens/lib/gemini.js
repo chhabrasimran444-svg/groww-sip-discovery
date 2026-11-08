@@ -5,7 +5,10 @@ let discovered = null;  // models found through the list endpoint
 const GONE = /not found|not supported|no longer|deprecated|retired|unavailable|is not available|unknown model|does not exist/i;
 
 function call(model, prompt, config, key) {
+  const ctrl = new AbortController();
+  setTimeout(() => ctrl.abort(), Number(process.env.AI_CALL_TIMEOUT_MS || 22000));
   return fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+    signal: ctrl.signal,
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
     body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: config }),
